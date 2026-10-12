@@ -1,0 +1,78 @@
+'use client';
+
+import React from 'react';
+import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
+import { LogOut, Bell, ChevronRight, LayoutDashboard, Globe } from 'lucide-react';
+
+interface TopbarProps {
+  title: string;
+  scopeBadge?: string;
+}
+
+export function Topbar({ title, scopeBadge }: TopbarProps) {
+  const { user, logout } = useAuth();
+
+  const getRoleTitle = (role?: string) => {
+    switch (role) {
+      case 'ROLE_MINISTRY_ADMIN':
+        return 'Ministry Admin (MoSPI)';
+      case 'ROLE_STATE_NODAL_AUTHORITY':
+        return 'State Nodal Officer';
+      case 'ROLE_DISTRICT_AUTHORITY':
+        return 'District Magistrate';
+      case 'ROLE_MP':
+        return 'Member of Parliament';
+      default:
+        return 'Authorized Stakeholder';
+    }
+  };
+
+  return (
+    <header className="bg-white border-b border-slate-200 px-4 sm:px-6 h-12 flex items-center justify-between sticky top-0 z-30 shadow-2xs">
+      {/* Left: Title & Scope Badge */}
+      <div className="flex items-center space-x-2.5 min-w-0">
+        <Link href="/" className="text-slate-400 hover:text-gov-navy-800 transition shrink-0 hidden sm:flex items-center gap-1 text-[11px] font-bold">
+          <Globe className="w-3 h-3 text-amber-500" />
+          <span>NIDHINETRA</span>
+          <ChevronRight className="w-2.5 h-2.5 text-slate-300" />
+        </Link>
+        <h1 className="text-sm font-bold text-gov-navy-900 tracking-tight truncate">
+          {title}
+        </h1>
+        {scopeBadge && (
+          <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-gov-navy-100 text-gov-navy-800 shrink-0 hidden sm:inline-block">
+            {scopeBadge}
+          </span>
+        )}
+      </div>
+
+      {/* Right: User Profile & Actions */}
+      <div className="flex items-center space-x-2 shrink-0">
+        <div className="flex items-center space-x-2 pl-2">
+          <div className="w-6.5 h-6.5 rounded-full bg-gov-navy-800 text-white flex items-center justify-center font-bold text-[10px]">
+            {user?.fullName?.charAt(0) || 'U'}
+          </div>
+
+          <div className="hidden md:flex flex-col text-right leading-none">
+            <span className="text-xs font-semibold text-gov-navy-900 truncate max-w-[140px]">
+              {user?.fullName || 'Official'}
+            </span>
+            <span className="text-[9px] text-slate-500 font-medium uppercase mt-0.5">
+              {getRoleTitle(user?.role)}
+            </span>
+          </div>
+
+          <button
+            onClick={logout}
+            title="Sign Out"
+            className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition ml-1"
+            aria-label="Sign out"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+}

@@ -1,0 +1,119 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --primary-navy: #0A2540;
+    --primary-blue: #0F3A66;
+    --gov-saffron: #E65100;
+    --gov-green: #138808;
+    --gov-ashoka: #002B7F;
+    --bg-light: #F8FAFC;
+    --text-main: #0F172A;
+    --text-muted: #475569;
+    --border-color: #E2E8F0;
+  }
+
+  html {
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    color: var(--text-main);
+    background-color: #F8FAFC;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background-color: #F8FAFC;
+  }
+
+  /* High contrast mode support */
+  body.high-contrast {
+    background-color: #000000 !important;
+    color: #FFFFFF !important;
+  }
+  body.high-contrast .bg-white,
+  body.high-contrast .bg-slate-50,
+  body.high-contrast .bg-gov-sand {
+    background-color: #121212 !important;
+    color: #FFFFFF !important;
+    border-color: #FFFFFF !important;
+  }
+}
+
+/* Custom official Government Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* Tricolor Top Stripe */
+.gov-tricolor-bar {
+  height: 4px;
+  background: linear-gradient(90deg, #FF9933 0%, #FF9933 33.33%, #FFFFFF 33.33%, #FFFFFF 66.66%, #138808 66.66%, #138808 100%);
+}
+
+.gov-border-accent {
+  border-top: 3px solid #0A2540;
+}
+
+.gov-section-header {
+  position: relative;
+  display: inline-block;
+  padding-bottom: 8px;
+}
+
+.gov-section-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 48px;
+  height: 3px;
+  background-color: #E65100;
+}
+
+.gov-section-header-center::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 56px;
+  height: 3px;
+  background-color: #E65100;
+}
+
+/* MPLADS Leaflet Map & Popup Styling */
+.mplads-custom-popup .leaflet-popup-content-wrapper {
+  padding: 0 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+  border: 1px solid #CBD5E1 !important;
+  overflow: hidden !important;
+}
+
+.mplads-custom-popup .leaflet-popup-content {
+  margin: 0 !important;
+  line-height: 1.4 !important;
+}
+
+.mplads-custom-popup .leaflet-popup-tip-container {
+  margin-top: -1px;
+}
+

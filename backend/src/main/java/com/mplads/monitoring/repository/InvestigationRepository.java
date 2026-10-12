@@ -1,0 +1,16 @@
+package com.mplads.monitoring.repository;
+
+import com.mplads.monitoring.entity.Investigation;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+public interface InvestigationRepository extends JpaRepository<Investigation, Long> {
+    List<Investigation> findByProjectId(Long projectId);
+    Optional<Investigation> findByCaseNumber(String caseNumber);
+    List<Investigation> findByStatus(String status);
+    Optional<Investigation> findByRiskAlertId(Long riskAlertId);
+}
