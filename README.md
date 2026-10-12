@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # MPLADS AI-Powered Monitoring & Decision Support Portal
 
 **Ministry of Statistics & Programme Implementation (MoSPI), Government of India**
@@ -248,3 +249,7 @@ To evaluate the complete end-to-end monitoring and AI investigation lifecycle:
 - **Backend fails to connect to AI Service**: The Spring Boot backend includes an embedded fallback engine. If the FastAPI microservice on port `8000` is offline, the backend seamlessly calculates deterministic risk scores matching the feature weights.
 - **H2 vs PostgreSQL**: By default, `SPRING_PROFILES_ACTIVE=dev` boots with in-memory H2. To connect to PostgreSQL, set `SPRING_PROFILES_ACTIVE=prod` and configure `DATABASE_URL`, `DATABASE_USERNAME`, and `DATABASE_PASSWORD`.
 - **CORS or JWT Errors**: Verify that `NEXT_PUBLIC_API_URL` in `frontend/.env.local` points to `http://localhost:8080`.
+=======
+# NIDHINETRA
+NIDHINETRA is an AI-powered public fund monitoring platform for MPLADS across India. It enables fund utilization tracking, development project monitoring, and AI-assisted anomaly detection to identify potential financial irregularities, delays, and inefficiencies, promoting transparency, accountability, and data-driven governance.
+>>>>>>> 1df022d3e83b60925bf360b685e9b1c756fb35e6
