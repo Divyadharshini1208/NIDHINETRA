@@ -206,7 +206,7 @@ export default function ProjectsListingPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {user && (user.role === 'ROLE_MP' || user.role === 'ROLE_MINISTRY_ADMIN') && (
               <Button
                 variant="saffron"

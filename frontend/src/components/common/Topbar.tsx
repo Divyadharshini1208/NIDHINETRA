@@ -3,7 +3,8 @@
 import React from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { LogOut, Bell, ChevronRight, LayoutDashboard, Globe } from 'lucide-react';
+import { useSidebar } from '@/context/SidebarContext';
+import { LogOut, Bell, ChevronRight, LayoutDashboard, Globe, Menu } from 'lucide-react';
 
 interface TopbarProps {
   title: string;
@@ -12,6 +13,7 @@ interface TopbarProps {
 
 export function Topbar({ title, scopeBadge }: TopbarProps) {
   const { user, logout } = useAuth();
+  const { toggleMobileSidebar } = useSidebar();
 
   const getRoleTitle = (role?: string) => {
     switch (role) {
@@ -29,19 +31,29 @@ export function Topbar({ title, scopeBadge }: TopbarProps) {
   };
 
   return (
-    <header className="bg-white border-b border-slate-200 px-4 sm:px-6 h-12 flex items-center justify-between sticky top-0 z-30 shadow-2xs">
-      {/* Left: Title & Scope Badge */}
-      <div className="flex items-center space-x-2.5 min-w-0">
-        <Link href="/" className="text-slate-400 hover:text-gov-navy-800 transition shrink-0 hidden sm:flex items-center gap-1 text-[11px] font-bold">
+    <header className="bg-white border-b border-slate-200 px-3 sm:px-6 h-12 flex items-center justify-between sticky top-0 z-30 shadow-2xs">
+      {/* Left: Mobile Toggle, Title & Scope Badge */}
+      <div className="flex items-center space-x-2 min-w-0 flex-1">
+        <button
+          onClick={toggleMobileSidebar}
+          className="lg:hidden p-1.5 -ml-1 mr-0.5 text-slate-700 hover:text-gov-navy-900 hover:bg-slate-100 rounded-md transition shrink-0"
+          aria-label="Open navigation menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+
+        <Link href="/" className="text-slate-400 hover:text-gov-navy-800 transition shrink-0 hidden md:flex items-center gap-1 text-[11px] font-bold">
           <Globe className="w-3 h-3 text-amber-500" />
           <span>NIDHINETRA</span>
           <ChevronRight className="w-2.5 h-2.5 text-slate-300" />
         </Link>
-        <h1 className="text-sm font-bold text-gov-navy-900 tracking-tight truncate">
+
+        <h1 className="text-xs sm:text-sm font-bold text-gov-navy-900 tracking-tight truncate max-w-[200px] sm:max-w-md lg:max-w-none">
           {title}
         </h1>
+
         {scopeBadge && (
-          <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-gov-navy-100 text-gov-navy-800 shrink-0 hidden sm:inline-block">
+          <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-gov-navy-100 text-gov-navy-800 shrink-0 hidden sm:inline-block truncate max-w-[130px]">
             {scopeBadge}
           </span>
         )}

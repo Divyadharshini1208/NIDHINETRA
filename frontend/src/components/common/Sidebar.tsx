@@ -30,9 +30,13 @@ import {
   Sliders
 } from 'lucide-react';
 
+import { useSidebar } from '@/context/SidebarContext';
+import { X } from 'lucide-react';
+
 export function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const { isMobileOpen, closeMobileSidebar } = useSidebar();
   const role = user?.role;
 
   const isActive = (path: string) => pathname === path;
@@ -97,12 +101,12 @@ export function Sidebar() {
 
   const navLinks = getNavLinks();
 
-  return (
-    <aside className="w-64 bg-[#0A2540] text-slate-300 flex flex-col justify-between h-screen sticky top-0 border-r border-slate-800 z-40">
+  const renderSidebarContent = (isMobile: boolean = false) => (
+    <>
       {/* Top Brand Section */}
       <div>
-        <div className="p-3.5 border-b border-slate-800 bg-[#071A2E] flex items-center">
-          <Link href="/" className="flex items-center">
+        <div className="p-3.5 border-b border-slate-800 bg-[#071A2E] flex items-center justify-between">
+          <Link href="/" className="flex items-center" onClick={() => isMobile && closeMobileSidebar()}>
             <NidhiNetraLogo
               size="sm"
               variant="dark"
@@ -111,6 +115,15 @@ export function Sidebar() {
               subtitleText="MPLADS Fund Intelligence"
             />
           </Link>
+          {isMobile && (
+            <button
+              onClick={closeMobileSidebar}
+              className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition"
+              aria-label="Close menu"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
         </div>
 
         {/* User Scope Banner */}
@@ -140,6 +153,7 @@ export function Sidebar() {
               <Link
                 key={item.name}
                 href={item.href}
+                onClick={() => isMobile && closeMobileSidebar()}
                 className={`flex items-center justify-between px-3 py-2 rounded-md text-xs font-semibold transition-colors ${
                   active
                     ? 'bg-gov-navy-600 text-white font-bold border-l-3 border-gov-saffron'
@@ -161,11 +175,12 @@ export function Sidebar() {
 
           <div className="pt-4 mt-4 border-t border-slate-800/80">
             <p className="px-3 py-1.5 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-              Public Portal
+              Public Transparency
             </p>
 
             <Link
               href="/"
+              onClick={() => isMobile && closeMobileSidebar()}
               className="flex items-center space-x-2.5 px-3 py-2 rounded-md text-xs font-semibold text-slate-300 hover:bg-slate-800/80 hover:text-white"
             >
               <Globe className="w-4 h-4 text-slate-400" />
@@ -174,6 +189,7 @@ export function Sidebar() {
 
             <Link
               href="/insights"
+              onClick={() => isMobile && closeMobileSidebar()}
               className="flex items-center space-x-2.5 px-3 py-2 rounded-md text-xs font-semibold text-slate-300 hover:bg-slate-800/80 hover:text-white"
             >
               <BarChart3 className="w-4 h-4 text-slate-400" />
@@ -186,13 +202,47 @@ export function Sidebar() {
       {/* Bottom Footer Section */}
       <div className="p-3 border-t border-slate-800 bg-[#071A2E]/50">
         <button
-          onClick={logout}
+          onClick={() => {
+            if (isMobile) closeMobileSidebar();
+            logout();
+          }}
           className="w-full flex items-center justify-center space-x-2 px-3 py-2 rounded bg-slate-800/80 hover:bg-red-950/40 text-xs font-semibold text-slate-300 hover:text-red-300 border border-slate-700/80 transition"
         >
           <LogOut className="w-3.5 h-3.5" />
           <span>Sign Out</span>
         </button>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop Persistent Sidebar (>= 1024px) */}
+      <aside className="hidden lg:flex w-64 bg-[#0A2540] text-slate-300 flex-col justify-between h-screen sticky top-0 border-r border-slate-800 z-30 shrink-0">
+        {renderSidebarContent(false)}
+      </aside>
+
+      {/* Mobile & Tablet Drawer Modal (< 1024px) */}
+      {isMobileOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 flex">
+          {/* Backdrop overlay */}
+          <div
+            className="fixed inset-0 bg-slate-900/70 backdrop-blur-xs transition-opacity"
+            onClick={closeMobileSidebar}
+            aria-hidden="true"
+          />
+
+          {/* Drawer container */}
+          <aside
+            className="relative w-72 max-w-[85vw] bg-[#0A2540] text-slate-300 flex flex-col justify-between h-full z-50 shadow-2xl border-r border-slate-800 overflow-y-auto animate-in slide-in-from-left duration-200"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Navigation drawer"
+          >
+            {renderSidebarContent(true)}
+          </aside>
+        </div>
+      )}
+    </>
   );
 }

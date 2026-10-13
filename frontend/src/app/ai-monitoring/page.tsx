@@ -41,7 +41,11 @@ import {
   Activity,
   ArrowRight,
   ShieldCheck,
-  AlertCircle
+  AlertCircle,
+  Search,
+  Bot,
+  Send,
+  Database
 } from 'lucide-react';
 
 export default function AiMonitoringDashboardPage() {
@@ -53,6 +57,27 @@ export default function AiMonitoringDashboardPage() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [engineHealth, setEngineHealth] = useState<any>(null);
+
+  // Grounded Natural-Language Analytics Assistant
+  const [nlQuery, setNlQuery] = useState<string>('');
+  const [nlResponse, setNlResponse] = useState<any | null>(null);
+  const [isQuerying, setIsQuerying] = useState<boolean>(false);
+
+  const handleNlQuerySubmit = async (e?: React.FormEvent, customQuery?: string) => {
+    if (e) e.preventDefault();
+    const queryToRun = customQuery || nlQuery;
+    if (!queryToRun.trim()) return;
+    setIsQuerying(true);
+    try {
+      const res = await aiMonitoringService.querySchemeAnalytics(queryToRun.trim());
+      setNlResponse(res);
+      setNlQuery(queryToRun);
+    } catch (err: any) {
+      toastError('Query Failed', err.message || 'Could not execute grounded analytics query');
+    } finally {
+      setIsQuerying(false);
+    }
+  };
 
   const loadData = async () => {
     const hasToken = typeof window !== 'undefined' && localStorage.getItem('mplads_token');
@@ -430,6 +455,116 @@ export default function AiMonitoringDashboardPage() {
               </div>
             ) : (
               <p className="text-xs text-slate-500">No high-risk projects currently flagged.</p>
+            )}
+          </div>
+
+          {/* Grounded Natural Language Scheme Analytics Assistant */}
+          <div className="bg-white rounded-xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="p-1.5 rounded-lg bg-gov-navy-50 text-gov-navy-900 border border-slate-200">
+                    <Bot className="w-4 h-4 text-gov-saffron" />
+                  </span>
+                  <h3 className="text-sm sm:text-base font-bold text-gov-navy-900">
+                    Scheme Intelligence & Grounded Query Assistant
+                  </h3>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                    ZERO SPECULATION GROUNDED
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  Query verified scheme data, anomaly patterns, and milestone delays. Responses are derived strictly from database records.
+                </p>
+              </div>
+            </div>
+
+            {/* Quick Suggestion Chips */}
+            <div className="flex flex-wrap gap-2 text-xs">
+              <span className="text-[11px] font-bold text-slate-400 py-1 uppercase">Sample Queries:</span>
+              {[
+                'Which projects are severely delayed?',
+                'Show high risk anomalies requiring review',
+                'Financial allocation and utilization velocity',
+                'Roads and drinking water infrastructure overview',
+              ].map((suggestion) => (
+                <button
+                  key={suggestion}
+                  onClick={() => handleNlQuerySubmit(undefined, suggestion)}
+                  className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-medium transition cursor-pointer"
+                >
+                  &ldquo;{suggestion}&rdquo;
+                </button>
+              ))}
+            </div>
+
+            {/* Query Input Form */}
+            <form onSubmit={handleNlQuerySubmit} className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                <input
+                  type="text"
+                  value={nlQuery}
+                  onChange={(e) => setNlQuery(e.target.value)}
+                  placeholder="Ask a question about projects, fund allocation, delay bottlenecks, or risk anomalies..."
+                  className="w-full text-xs pl-9 pr-4 py-2.5 rounded-lg border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-gov-navy-700"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={isQuerying || !nlQuery.trim()}
+                className="px-4 py-2.5 bg-gov-navy-800 hover:bg-gov-navy-900 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0"
+              >
+                {isQuerying ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Send className="w-3.5 h-3.5 text-gov-saffron" />
+                )}
+                <span>Ask Query</span>
+              </button>
+            </form>
+
+            {/* Query Response Card */}
+            {nlResponse && (
+              <div className="mt-3 p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-3 animate-in fade-in duration-200">
+                <div className="flex items-start justify-between gap-2 border-b border-slate-200/80 pb-2">
+                  <div className="flex items-center gap-1.5 font-bold text-gov-navy-900">
+                    <Database className="w-3.5 h-3.5 text-gov-saffron" />
+                    <span>Evidence-Grounded Query Result</span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    Query: &ldquo;{nlResponse.query}&rdquo;
+                  </span>
+                </div>
+
+                <p className="text-slate-800 text-xs font-medium leading-relaxed bg-white p-3 rounded-lg border border-slate-200">
+                  {nlResponse.answer}
+                </p>
+
+                {nlResponse.keyFindings && nlResponse.keyFindings.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="font-bold text-[11px] text-slate-600 uppercase">Key Record Findings:</p>
+                    <ul className="space-y-1 pl-4 list-disc text-slate-700 text-[11px]">
+                      {nlResponse.keyFindings.map((finding: string, idx: number) => (
+                        <li key={idx}>{finding}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {nlResponse.suggestedActions && nlResponse.suggestedActions.length > 0 && (
+                  <div className="p-2.5 bg-blue-50/70 rounded-lg border border-blue-200 text-blue-950 space-y-1">
+                    <p className="font-bold text-[11px] uppercase text-blue-900">Recommended Next Step:</p>
+                    {nlResponse.suggestedActions.map((action: string, idx: number) => (
+                      <p key={idx} className="text-[11px] text-blue-800">&bull; {action}</p>
+                    ))}
+                  </div>
+                )}
+
+                <p className="text-[10px] text-slate-400 italic pt-1">
+                  {nlResponse.statutoryNotice || 'Output generated strictly from verified database records.'}
+                </p>
+              </div>
             )}
           </div>
 

@@ -10,4 +10,5 @@ public interface AiClientService {
     AiAnalysisPreviewResponse evaluateProject(Project project);
     Map<String, Object> detectDuplicates(Project targetProject, List<Project> candidates);
     boolean isAiServiceHealthy();
+    Map<String, Object> queryGroundedAnalytics(String query, List<Project> scopedProjects);
 }

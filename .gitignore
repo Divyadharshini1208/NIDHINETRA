@@ -5,6 +5,19 @@ node_modules/
 # Build output
 dist/
 build/
+.next/
+out/
+target/
+*.class
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+venv/
+.venv/
 
 # Environment variables and secrets
 .env

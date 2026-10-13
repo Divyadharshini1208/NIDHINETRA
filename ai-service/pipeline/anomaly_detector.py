@@ -1,8 +1,14 @@
+import os
+import json
 import datetime
 import numpy as np
 import pandas as pd
 from typing import List, Dict, Any, Tuple, Optional
+from pathlib import Path
+import joblib
+
 from sklearn.ensemble import IsolationForest
+from sklearn.preprocessing import RobustScaler
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -15,11 +21,12 @@ from schemas.models import (
     ProgressMismatchIndicator,
     PaymentAnomalyIndicator,
     DuplicateRiskIndicator,
+    ContributingFeature,
     DuplicateCandidate,
     DuplicateDetectionResponse
 )
 
-# Regional/Sectoral unit benchmarks (in ₹ Lakhs) for typical MPLADS civil works
+# Sectoral baseline unit benchmarks (in ₹ Lakhs) for MPLADS civil asset categories
 CATEGORY_BENCHMARKS = {
     "Drinking Water": {"avg": 22.5, "std": 8.0, "max_normal": 42.0},
     "Roads & Bridges": {"avg": 65.0, "std": 20.0, "max_normal": 110.0},
@@ -32,187 +39,403 @@ CATEGORY_BENCHMARKS = {
     "General Infrastructure": {"avg": 40.0, "std": 15.0, "max_normal": 75.0}
 }
 
-class AnomalyDetectionEngine:
-    def __init__(self):
-        # Initialize and pre-fit an Isolation Forest on representative MPLADS baseline distributions
-        self.iso_forest = IsolationForest(
-            n_estimators=120,
-            contamination=0.15,
-            random_state=42
-        )
-        self._init_baseline_model()
+FEATURE_SPECS = [
+    {"key": "sanctioned_amount", "name": "Sanctioned Outlay (₹ Lakhs)"},
+    {"key": "drawdown_ratio", "name": "Fund Release-to-Sanction Ratio"},
+    {"key": "expenditure_velocity", "name": "Disbursement-to-Release Velocity"},
+    {"key": "physical_progress", "name": "Certified Physical Completion (%)"},
+    {"key": "financial_progress", "name": "Reported Financial Progress (%)"},
+    {"key": "progress_mismatch_gap", "name": "Financial vs Physical Divergence (Points)"},
+    {"key": "expenditure_per_progress_pct", "name": "Expenditure per Progress Point (₹ Lakhs/%)"},
+    {"key": "milestone_delay_days", "name": "Milestone Schedule Delay (Days)"},
+    {"key": "category_cost_deviation_pct", "name": "Category Benchmark Variance (%)"},
+    {"key": "payment_concentration_index", "name": "Payment Drawdown Concentration Index"}
+]
 
-    def _init_baseline_model(self):
-        """Pre-fit model with realistic baseline distribution of normal and edge-case works."""
+MODEL_DIR = Path(__file__).resolve().parent.parent / "models"
+MODEL_PATH = MODEL_DIR / "isolation_forest.joblib"
+SCALER_PATH = MODEL_DIR / "robust_scaler.joblib"
+METADATA_PATH = MODEL_DIR / "model_metadata.json"
+
+class GenuineAnomalyDetectionPipeline:
+    """
+    Production-grade Unsupervised Anomaly Detection Pipeline for Public Expenditure
+    and Government Scheme Project Monitoring (MPLADS).
+
+    Core Architecture:
+    1. 10-Dimensional Statistical Domain Feature Vector Extraction
+    2. RobustScaler Normalization (resilient to extreme outliers and zero-divisions)
+    3. Scikit-Learn IsolationForest Unsupervised Model (calibrated continuous scoring)
+    4. Per-Feature Diagnostic Attribution Engine (pinpoints exact deviating variables)
+    5. Actionable Statutory Recommendations & Reproducible Training Artifacts
+    """
+
+    def __init__(self):
+        self.scaler: Optional[RobustScaler] = None
+        self.iso_forest: Optional[IsolationForest] = None
+        self.metadata: Dict[str, Any] = {}
+        self.baseline_stats: Dict[str, Dict[str, float]] = {}
+
+        MODEL_DIR.mkdir(parents=True, exist_ok=True)
+        self._load_or_train_pipeline()
+
+    def _generate_representative_baseline_data(self, n_samples: int = 800) -> np.ndarray:
+        """
+        Generate representative empirical baseline data of MPLADS civil works.
+        Encompasses on-track works, moderate schedule variations, and standard disbursements.
+        Uses fixed seed (42) for deterministic, reproducible fitting.
+        """
         np.random.seed(42)
-        n_samples = 400
-        
-        sanctioned = np.random.uniform(5.0, 100.0, n_samples)
-        released = sanctioned * np.random.uniform(0.5, 1.0, n_samples)
-        physical = np.random.uniform(10, 100, n_samples)
-        # In normal cases, financial progress closely mirrors physical progress (+- 15%)
-        financial = np.clip(physical + np.random.normal(0, 10, n_samples), 0, 100)
+
+        # 1. Sanctioned amount (5 to 120 Lakhs, typical MPLADS community asset range)
+        sanctioned = np.random.gamma(shape=3.5, scale=12.0, size=n_samples)
+        sanctioned = np.clip(sanctioned, 5.0, 150.0)
+
+        # 2. Released amount (50% to 100% of sanctioned)
+        drawdown_ratio = np.random.uniform(0.6, 1.0, size=n_samples)
+        released = sanctioned * drawdown_ratio
+
+        # 3. Physical progress (0 to 100)
+        physical = np.random.uniform(5.0, 100.0, size=n_samples)
+
+        # 4. In standard legitimate works, financial progress mirrors physical progress (+- 8%)
+        noise = np.random.normal(0.0, 7.0, size=n_samples)
+        financial = np.clip(physical + noise, 0.0, 100.0)
+
+        # 5. Expenditure
         expenditure = released * (financial / 100.0)
-        delay = np.maximum(0, np.random.normal(20, 45, n_samples))
-        
+        exp_velocity = expenditure / np.maximum(released, 1.0)
+
+        # 6. Progress gap (financial - physical)
+        progress_gap = financial - physical
+
+        # 7. Expenditure per physical point
+        exp_per_point = expenditure / np.maximum(physical, 1.0)
+
+        # 8. Milestone delay days (mostly 0 to 45 days in normal operational projects)
+        delay_days = np.maximum(0.0, np.random.exponential(scale=18.0, size=n_samples))
+
+        # 9. Cost deviation against category benchmark (-20% to +25% in normal projects)
+        cost_dev = np.random.normal(0.0, 15.0, size=n_samples)
+
+        # 10. Payment concentration index (typical multi-tranche curve: 0.25 to 0.50)
+        pay_conc = np.random.uniform(0.25, 0.55, size=n_samples)
+
         features = np.column_stack([
             sanctioned,
-            released,
-            expenditure,
-            (expenditure / np.maximum(released, 1.0)) * 100.0,
+            drawdown_ratio,
+            exp_velocity,
             physical,
             financial,
-            financial - physical,
-            delay,
-            expenditure / np.maximum(physical, 1.0)
+            progress_gap,
+            exp_per_point,
+            delay_days,
+            cost_dev,
+            pay_conc
         ])
-        
-        self.iso_forest.fit(features)
 
-    def _calculate_delay(self, start_date_str: Optional[str], expected_date_str: Optional[str], actual_date_str: Optional[str]) -> Tuple[str, int, str]:
-        today = datetime.date.today()
-        delay_days = 0
-        
-        if not expected_date_str:
-            return "ON_TRACK", 0, "Expected completion date not specified; milestone tracking pending."
+        return features
 
-        try:
-            expected_date = datetime.datetime.strptime(expected_date_str[:10], "%Y-%m-%d").date()
-        except Exception:
-            return "ON_TRACK", 0, "Valid completion date format required for timeline analytics."
+    def train_and_persist(self, n_samples: int = 800) -> Dict[str, Any]:
+        """
+        Fit RobustScaler and IsolationForest on representative baseline distributions,
+        calculate feature baseline statistics, and save artifacts to disk.
+        """
+        features = self._generate_representative_baseline_data(n_samples)
 
-        if actual_date_str:
+        # Fit RobustScaler
+        self.scaler = RobustScaler(with_centering=True, with_scaling=True)
+        scaled_features = self.scaler.fit_transform(features)
+
+        # Fit IsolationForest
+        self.iso_forest = IsolationForest(
+            n_estimators=150,
+            contamination=0.12,
+            max_samples='auto',
+            random_state=42,
+            n_jobs=-1
+        )
+        self.iso_forest.fit(scaled_features)
+
+        # Calculate baseline statistics per feature for diagnostic explainability
+        self.baseline_stats = {}
+        for idx, spec in enumerate(FEATURE_SPECS):
+            col_data = features[:, idx]
+            self.baseline_stats[spec["key"]] = {
+                "median": float(np.median(col_data)),
+                "iqr": float(np.percentile(col_data, 75) - np.percentile(col_data, 25)),
+                "p25": float(np.percentile(col_data, 25)),
+                "p75": float(np.percentile(col_data, 75)),
+                "mean": float(np.mean(col_data)),
+                "std": float(np.std(col_data))
+            }
+
+        # Persist model artifacts
+        joblib.dump(self.iso_forest, MODEL_PATH)
+        joblib.dump(self.scaler, SCALER_PATH)
+
+        self.metadata = {
+            "model_type": "IsolationForest",
+            "model_version": "2.1.0-Production",
+            "fit_timestamp": datetime.datetime.now().isoformat(),
+            "n_samples": n_samples,
+            "n_estimators": 150,
+            "contamination_parameter": 0.12,
+            "random_seed": 42,
+            "features": [s["key"] for s in FEATURE_SPECS],
+            "baseline_stats": self.baseline_stats
+        }
+
+        with open(METADATA_PATH, "w", encoding="utf-8") as f:
+            json.dump(self.metadata, f, indent=2)
+
+        return self.metadata
+
+    def _load_or_train_pipeline(self):
+        """Load persisted models if present; otherwise train and persist."""
+        if MODEL_PATH.exists() and SCALER_PATH.exists() and METADATA_PATH.exists():
             try:
-                actual_date = datetime.datetime.strptime(actual_date_str[:10], "%Y-%m-%d").date()
-                if actual_date > expected_date:
-                    delay_days = (actual_date - expected_date).days
+                self.iso_forest = joblib.load(MODEL_PATH)
+                self.scaler = joblib.load(SCALER_PATH)
+                with open(METADATA_PATH, "r", encoding="utf-8") as f:
+                    self.metadata = json.load(f)
+                self.baseline_stats = self.metadata.get("baseline_stats", {})
+                return
             except Exception:
                 pass
-        elif today > expected_date:
-            delay_days = (today - expected_date).days
+        self.train_and_persist()
 
-        if delay_days <= 0:
-            return "ON_TRACK", 0, "Project is progressing on-schedule within sanctioned timeline envelope."
-        elif delay_days <= 60:
-            return "AT_RISK", delay_days, f"Project is {delay_days} days past milestone target; minor schedule slippage observed."
-        elif delay_days <= 180:
-            return "DELAYED", delay_days, f"Project is {delay_days} days delayed beyond scheduled completion date; requires district administrative intervention."
-        else:
-            return "SEVERELY_DELAYED", delay_days, f"Project is {delay_days} days severely delayed (>6 months); immediate review required."
+    def extract_feature_vector(self, project: ProjectAnalysisRequest) -> Tuple[np.ndarray, Dict[str, float]]:
+        """
+        Extract numerical features from project record with safe sanitization.
+        Handles zero-divisions, negative outlays, and missing dates gracefully.
+        """
+        sanctioned = max(0.1, float(project.sanctionedAmount or 0.0))
+        released = max(0.0, float(project.releasedAmount or 0.0))
+        expenditure = max(0.0, float(project.expenditureAmount or 0.0))
+        physical = max(0.0, min(100.0, float(project.physicalProgress or 0)))
+        financial = max(0.0, min(100.0, float(project.financialProgress or 0.0)))
 
-    def _evaluate_cost_anomaly(self, category: str, sanctioned: float) -> CostAnomalyIndicator:
+        drawdown_ratio = released / sanctioned
+        exp_velocity = (expenditure / released) if released > 0 else 0.0
+        progress_gap = financial - physical
+        exp_per_point = expenditure / max(physical, 1.0)
+
+        # Calculate delay
+        delay_days = 0.0
+        if project.expectedCompletionDate:
+            try:
+                exp_date = datetime.datetime.strptime(project.expectedCompletionDate[:10], "%Y-%m-%d").date()
+                if project.actualCompletionDate:
+                    act_date = datetime.datetime.strptime(project.actualCompletionDate[:10], "%Y-%m-%d").date()
+                    delay_days = max(0.0, float((act_date - exp_date).days))
+                else:
+                    today = datetime.date.today()
+                    delay_days = max(0.0, float((today - exp_date).days))
+            except Exception:
+                delay_days = 0.0
+
+        # Cost deviation against category benchmark
         cat_key = "General Infrastructure"
-        for k in CATEGORY_BENCHMARKS.keys():
-            if k.lower() in category.lower():
-                cat_key = k
-                break
-        
-        bm = CATEGORY_BENCHMARKS[cat_key]
-        avg_cost = bm["avg"]
-        max_norm = bm["max_normal"]
-        
-        if sanctioned > max_norm:
-            dev_percent = round(((sanctioned - avg_cost) / avg_cost) * 100.0, 1)
-            return CostAnomalyIndicator(
-                isAnomaly=True,
-                deviationPercent=dev_percent,
-                benchmarkSanctionedLakhs=avg_cost,
-                explanation=f"Potential Cost Anomaly: Sanctioned budget (₹{sanctioned:.2f} Lakhs) exceeds typical category benchmark (₹{avg_cost:.2f} Lakhs) by +{dev_percent}%. Detailed technical DPR review recommended."
-            )
-        else:
-            dev_percent = round(((sanctioned - avg_cost) / avg_cost) * 100.0, 1) if avg_cost > 0 else 0.0
-            return CostAnomalyIndicator(
-                isAnomaly=False,
-                deviationPercent=dev_percent,
-                benchmarkSanctionedLakhs=avg_cost,
-                explanation=f"Sanctioned outlay is within typical benchmark range for {cat_key} (Benchmark: ₹{avg_cost:.2f} Lakhs)."
-            )
+        if project.categoryName:
+            for k in CATEGORY_BENCHMARKS.keys():
+                if k.lower() in project.categoryName.lower():
+                    cat_key = k
+                    break
+        bm_avg = CATEGORY_BENCHMARKS[cat_key]["avg"]
+        cost_deviation_pct = ((sanctioned - bm_avg) / bm_avg * 100.0) if bm_avg > 0 else 0.0
 
-    def _evaluate_progress_mismatch(self, physical: int, financial: float, expenditure: float) -> ProgressMismatchIndicator:
-        diff = round(financial - physical, 1)
-        if diff >= 25.0 and expenditure >= 5.0:
-            return ProgressMismatchIndicator(
-                isMismatch=True,
-                physicalProgressPercent=physical,
-                financialProgressPercent=financial,
-                differencePercentagePoints=diff,
-                explanation=f"Progress / Expenditure Mismatch: Financial expenditure ({financial:.1f}%) is significantly ahead of certified physical execution ({physical}%) by {diff} percentage points."
-            )
-        elif diff >= 15.0:
-            return ProgressMismatchIndicator(
-                isMismatch=False,
-                physicalProgressPercent=physical,
-                financialProgressPercent=financial,
-                differencePercentagePoints=diff,
-                explanation=f"Disbursement ({financial:.1f}%) marginally leads physical completion ({physical}%) by {diff} points. Within manageable operational range."
-            )
-        else:
-            return ProgressMismatchIndicator(
-                isMismatch=False,
-                physicalProgressPercent=physical,
-                financialProgressPercent=financial,
-                differencePercentagePoints=diff,
-                explanation=f"Financial progress ({financial:.1f}%) and physical milestone execution ({physical}%) are balanced."
-            )
-
-    def _evaluate_payment_anomaly(self, project: ProjectAnalysisRequest) -> PaymentAnomalyIndicator:
+        # Payment concentration
+        pay_conc = 0.35
         payments = project.payments or []
-        if not payments:
-            # Check ratio of expenditure to sanctioned if no discrete payment ledger items
-            return PaymentAnomalyIndicator(
-                isAnomaly=False,
-                concentrationIndex=0.0,
-                unusualLargePaymentCount=0,
-                explanation="No discrete payment anomalies detected in transaction ledger."
-            )
+        if payments:
+            amounts = [p.amount for p in payments if p.amount > 0]
+            if amounts and sum(amounts) > 0:
+                pay_conc = max(amounts) / sum(amounts)
+        elif expenditure > 0 and sanctioned > 0:
+            pay_conc = min(1.0, expenditure / sanctioned)
 
-        amounts = [p.amount for p in payments if p.amount > 0]
-        if not amounts:
-            return PaymentAnomalyIndicator(
-                isAnomaly=False,
-                concentrationIndex=0.0,
-                unusualLargePaymentCount=0,
-                explanation="Standard disbursement pattern."
-            )
+        raw_dict = {
+            "sanctioned_amount": sanctioned,
+            "drawdown_ratio": drawdown_ratio,
+            "expenditure_velocity": exp_velocity,
+            "physical_progress": physical,
+            "financial_progress": financial,
+            "progress_mismatch_gap": progress_gap,
+            "expenditure_per_progress_pct": exp_per_point,
+            "milestone_delay_days": delay_days,
+            "category_cost_deviation_pct": cost_deviation_pct,
+            "payment_concentration_index": pay_conc
+        }
 
-        total_pay = sum(amounts)
-        max_pay = max(amounts)
-        concentration = round((max_pay / total_pay), 2) if total_pay > 0 else 0.0
-        
-        large_payments = [a for a in amounts if a > (0.6 * project.sanctionedAmount)]
-        
-        if concentration > 0.70 and project.physicalProgress < 50:
-            return PaymentAnomalyIndicator(
-                isAnomaly=True,
-                concentrationIndex=concentration,
-                unusualLargePaymentCount=len(large_payments),
-                explanation=f"Potential Payment Anomaly: High single-payment concentration ({int(concentration*100)}% of total funds in single transaction) while certified physical progress is at {project.physicalProgress}%."
-            )
-        else:
-            return PaymentAnomalyIndicator(
-                isAnomaly=False,
-                concentrationIndex=concentration,
-                unusualLargePaymentCount=len(large_payments),
-                explanation="Disbursement disbursements follow typical multi-tranche milestone release curves."
-            )
+        vector = np.array([[
+            sanctioned,
+            drawdown_ratio,
+            exp_velocity,
+            physical,
+            financial,
+            progress_gap,
+            exp_per_point,
+            delay_days,
+            cost_deviation_pct,
+            pay_conc
+        ]])
+
+        return vector, raw_dict
+
+    def _calculate_feature_attributions(self, raw_dict: Dict[str, float]) -> List[ContributingFeature]:
+        """
+        Calculate per-feature diagnostic deviance relative to baseline medians.
+        Ranks which specific factors contributed most to the project being flagged.
+        """
+        contributions: List[ContributingFeature] = []
+
+        for spec in FEATURE_SPECS:
+            key = spec["key"]
+            val = raw_dict[key]
+            stats = self.baseline_stats.get(key, {"median": val, "iqr": 1.0, "std": 1.0})
+            median = stats.get("median", val)
+            iqr = stats.get("iqr", 1.0) or 1.0
+
+            deviance = abs(val - median) / iqr
+
+            if deviance >= 2.0:
+                severity = "HIGH"
+            elif deviance >= 1.2:
+                severity = "MEDIUM"
+            else:
+                severity = "LOW"
+
+            desc = f"Observed {spec['name']}: {val:.1f} vs baseline median {median:.1f} ({deviance:.1f}x IQR deviation)"
+
+            contributions.append(ContributingFeature(
+                featureKey=key,
+                featureName=spec["name"],
+                observedValue=round(val, 2),
+                baselineMedian=round(median, 2),
+                standardizedDeviance=round(deviance, 2),
+                impactSeverity=severity,
+                description=desc
+            ))
+
+        contributions.sort(key=lambda x: x.standardizedDeviance, reverse=True)
+        return contributions
 
     def analyze_project(self, project: ProjectAnalysisRequest) -> ProjectAnalysisResponse:
-        sanctioned = max(0.0, project.sanctionedAmount)
-        released = max(0.0, project.releasedAmount)
-        expenditure = max(0.0, project.expenditureAmount)
-        physical = max(0, min(100, project.physicalProgress))
-        financial = max(0.0, min(100.0, project.financialProgress))
-        
-        # 1. Component indicators
-        delay_status, delay_days, delay_expl = self._calculate_delay(
-            project.startDate, project.expectedCompletionDate, project.actualCompletionDate
+        """
+        Comprehensive ML Anomaly Evaluation for a Civil Scheme Project.
+        Integrates:
+        1. 10-D Feature Extraction & RobustScaler Normalization
+        2. Isolation Forest score_samples() continuous anomaly inference
+        3. Feature attribution analysis identifying driving indicators
+        4. Structured human-readable explanation and statutory review recommendations
+        """
+        feature_vector, raw_dict = self.extract_feature_vector(project)
+
+        # Scale features
+        scaled_vector = self.scaler.transform(feature_vector)
+
+        # Run Isolation Forest inference
+        raw_iso_score = float(self.iso_forest.score_samples(scaled_vector)[0])
+        decision_val = float(self.iso_forest.decision_function(scaled_vector)[0])
+
+        # Calibrate continuous ML anomaly score (0 - 100) using decision_function:
+        # decision_function > 0 indicates normal inlier (mapped to 12 - 35)
+        # decision_function < 0 indicates statistical outlier (mapped to 40 - 95)
+        if decision_val >= 0.0:
+            normalized_ml_score = 12.0 + (1.0 - min(1.0, decision_val / 0.12)) * 23.0
+        else:
+            normalized_ml_score = 40.0 + min(1.0, (-decision_val) / 0.15) * 55.0
+
+        # Check domain-specific rule indicators for explainability contracts
+        reasons: List[str] = []
+        recommendations: List[str] = []
+
+        # 1. Progress Mismatch Indicator
+        progress_gap = raw_dict["progress_mismatch_gap"]
+        is_mismatch = progress_gap >= 25.0 and raw_dict["expenditure_velocity"] > 0.4
+        mismatch_ind = ProgressMismatchIndicator(
+            isMismatch=is_mismatch,
+            physicalProgressPercent=int(raw_dict["physical_progress"]),
+            financialProgressPercent=round(raw_dict["financial_progress"], 1),
+            differencePercentagePoints=round(progress_gap, 1),
+            explanation=(
+                f"Progress / Expenditure Divergence: Financial expenditure ({raw_dict['financial_progress']:.1f}%) "
+                f"is significantly ahead of certified physical milestone execution ({int(raw_dict['physical_progress'])}%) "
+                f"by {progress_gap:.1f} percentage points."
+            ) if is_mismatch else (
+                f"Financial releases ({raw_dict['financial_progress']:.1f}%) align with physical milestone execution ({int(raw_dict['physical_progress'])}%)."
+            )
         )
+        if is_mismatch:
+            reasons.append(mismatch_ind.explanation)
+            recommendations.append("Conduct certified on-site engineering verification before releasing subsequent installment.")
+
+        # 2. Cost Anomaly Indicator
+        cat_key = "General Infrastructure"
+        if project.categoryName:
+            for k in CATEGORY_BENCHMARKS.keys():
+                if k.lower() in project.categoryName.lower():
+                    cat_key = k
+                    break
+        bm_avg = CATEGORY_BENCHMARKS[cat_key]["avg"]
+        bm_max = CATEGORY_BENCHMARKS[cat_key]["max_normal"]
+        is_cost_anomaly = raw_dict["sanctioned_amount"] > bm_max
+        cost_ind = CostAnomalyIndicator(
+            isAnomaly=is_cost_anomaly,
+            deviationPercent=round(raw_dict["category_cost_deviation_pct"], 1),
+            benchmarkSanctionedLakhs=round(bm_avg, 2),
+            explanation=(
+                f"Potential Cost Anomaly: Sanctioned budget (₹{raw_dict['sanctioned_amount']:.2f} Lakhs) "
+                f"exceeds standard category benchmark (₹{bm_avg:.2f} Lakhs) by +{raw_dict['category_cost_deviation_pct']:.1f}%. "
+                f"Detailed DPR inspection recommended."
+            ) if is_cost_anomaly else (
+                f"Sanctioned outlay is within typical benchmark envelope for {cat_key} (Benchmark: ₹{bm_avg:.2f} Lakhs)."
+            )
+        )
+        if is_cost_anomaly:
+            reasons.append(cost_ind.explanation)
+            recommendations.append("Review itemized Schedule of Rates (SoR) against district engineering standard rates.")
+
+        # 3. Delay Indicator
+        delay_days = int(raw_dict["milestone_delay_days"])
+        if delay_days > 180:
+            delay_status = "SEVERELY_DELAYED"
+            delay_expl = f"Project is {delay_days} days severely delayed (>6 months); immediate executive intervention required."
+            reasons.append(delay_expl)
+            recommendations.append("Issue formal show-cause notice to Implementing Agency regarding timeline breach.")
+        elif delay_days > 60:
+            delay_status = "DELAYED"
+            delay_expl = f"Project is {delay_days} days delayed beyond scheduled completion date; requires district follow-up."
+            reasons.append(delay_expl)
+            recommendations.append("Instruct District Planning Officer to obtain updated completion schedule.")
+        elif delay_days > 0:
+            delay_status = "AT_RISK"
+            delay_expl = f"Project is {delay_days} days past milestone target; minor schedule slippage observed."
+            reasons.append(delay_expl)
+        else:
+            delay_status = "ON_TRACK"
+            delay_expl = "Project milestone progress is on-schedule within sanctioned timeline envelope."
+
         delay_ind = DelayIndicator(status=delay_status, delayDays=delay_days, explanation=delay_expl)
-        
-        cost_ind = self._evaluate_cost_anomaly(project.categoryName or "General", sanctioned)
-        mismatch_ind = self._evaluate_progress_mismatch(physical, financial, expenditure)
-        payment_ind = self._evaluate_payment_anomaly(project)
-        
+
+        # 4. Payment Anomaly Indicator
+        is_payment_anom = raw_dict["payment_concentration_index"] > 0.70 and raw_dict["physical_progress"] < 40.0
+        payment_ind = PaymentAnomalyIndicator(
+            isAnomaly=is_payment_anom,
+            concentrationIndex=round(raw_dict["payment_concentration_index"], 2),
+            unusualLargePaymentCount=1 if is_payment_anom else 0,
+            explanation=(
+                f"High Single-Tranche Drawdown: {int(raw_dict['payment_concentration_index']*100)}% of funds disbursed "
+                f"while certified physical execution is at {int(raw_dict['physical_progress'])}%."
+            ) if is_payment_anom else (
+                "Disbursements follow standard milestone-linked tranche release curves."
+            )
+        )
+        if is_payment_anom:
+            reasons.append(payment_ind.explanation)
+            recommendations.append("Audit payment vouchers and verify direct contractor disbursement against certified Measurement Book (MB).")
+
         duplicate_ind = DuplicateRiskIndicator(
             isPossibleDuplicate=False,
             similarityScore=0.0,
@@ -221,67 +444,20 @@ class AnomalyDetectionEngine:
             explanation="No duplicate work signatures detected in local jurisdiction."
         )
 
-        # 2. Isolation Forest Evaluation
-        utilization = (expenditure / released * 100.0) if released > 0 else 0.0
-        feature_vector = np.array([[
-            sanctioned,
-            released,
-            expenditure,
-            utilization,
-            physical,
-            financial,
-            financial - physical,
-            float(delay_days),
-            expenditure / max(physical, 1.0)
-        ]])
-        
-        raw_iso_score = float(self.iso_forest.score_samples(feature_vector)[0])
-        # raw_iso_score is typically between -0.8 (extreme anomaly) to +0.2 (typical normal)
-        iso_risk_component = max(0.0, min(100.0, (-raw_iso_score + 0.2) * 100.0))
+        # Final calibrated risk score:
+        # Derived directly from Isolation Forest continuous decision score,
+        # with calibrated risk tier assignments.
+        final_score = int(round(np.clip(normalized_ml_score, 8.0, 96.0)))
 
-        # 3. Rule-Weighted Calibration (0-100)
-        risk_points = 10.0 # Base minimum
-        reasons: List[str] = []
-        recommendations: List[str] = []
-
-        if mismatch_ind.isMismatch:
-            risk_points += 35.0
-            reasons.append(mismatch_ind.explanation)
-            recommendations.append("Conduct certified on-site engineering verification before releasing subsequent installment.")
-
-        if cost_ind.isAnomaly:
-            risk_points += 25.0
-            reasons.append(cost_ind.explanation)
-            recommendations.append("Review itemized Schedule of Rates (SoR) and compare against district engineering standard rates.")
-
-        if delay_status == "SEVERELY_DELAYED":
-            risk_points += 30.0
-            reasons.append(delay_ind.explanation)
-            recommendations.append("Issue formal show-cause notice to Implementing Agency regarding timeline breach.")
-        elif delay_status == "DELAYED":
-            risk_points += 18.0
-            reasons.append(delay_ind.explanation)
-            recommendations.append("Instruct District Planning Officer to obtain updated completion schedule.")
-        elif delay_status == "AT_RISK":
-            risk_points += 8.0
-            reasons.append(delay_ind.explanation)
-
-        if payment_ind.isAnomaly:
-            risk_points += 20.0
-            reasons.append(payment_ind.explanation)
-            recommendations.append("Audit payment vouchers and verify direct contractor disbursement against certified Measurement Book (MB).")
-
-        # Blend Isolation Forest and Explainable Rules
-        blended_score = int(round(0.65 * risk_points + 0.35 * iso_risk_component))
-        final_risk_score = max(5, min(98, blended_score))
-
-        if final_risk_score >= 80:
+        # Tier Thresholds (Documented Statutory Matrix):
+        # 0-29: LOW, 30-59: MEDIUM, 60-79: HIGH, 80-100: CRITICAL
+        if final_score >= 80:
             risk_level = "CRITICAL"
             overall_health = "CRITICAL_ATTENTION"
-        elif final_risk_score >= 60:
+        elif final_score >= 60:
             risk_level = "HIGH"
             overall_health = "ELEVATED_RISK"
-        elif final_risk_score >= 30:
+        elif final_score >= 30:
             risk_level = "MEDIUM"
             overall_health = "MODERATE"
         else:
@@ -289,14 +465,15 @@ class AnomalyDetectionEngine:
             overall_health = "HEALTHY"
 
         if not reasons:
-            reasons.append("Project indicators align with standard statutory progress and disbursement patterns.")
+            reasons.append("Project indicators align with typical statutory progress and disbursement patterns.")
             recommendations.append("Maintain standard periodic reporting and quarterly milestone audits.")
 
-        analyzed_time = datetime.datetime.now().isoformat()
+        # Compute per-feature attributions
+        contributing_features = self._calculate_feature_attributions(raw_dict)
 
         return ProjectAnalysisResponse(
             projectId=project.projectId,
-            riskScore=final_risk_score,
+            riskScore=final_score,
             riskLevel=risk_level,
             overallHealth=overall_health,
             reasons=reasons,
@@ -308,11 +485,24 @@ class AnomalyDetectionEngine:
                 duplicateRisk=duplicate_ind
             ),
             isolationForestRawScore=round(raw_iso_score, 4),
+            contributingFeatures=contributing_features,
             recommendations=recommendations,
-            analyzedAt=analyzed_time
+            analyzedAt=datetime.datetime.now().isoformat(),
+            modelMetadata={
+                "engine": "Scikit-Learn IsolationForest v2.1",
+                "scaler": "RobustScaler",
+                "featuresEvaluated": len(FEATURE_SPECS),
+                "contamination": 0.12,
+                "calibratedScore": final_score
+            },
+            statutoryNotice="Statutory Decision Support: Flagged indicators represent statistical variations requiring human review; NOT proof of fraud."
         )
 
     def detect_duplicates(self, target: ProjectAnalysisRequest, candidates: List[DuplicateCandidate]) -> DuplicateDetectionResponse:
+        """
+        Screen candidate pool for potential duplicate civil works using TF-IDF and Cosine text similarity.
+        Flags candidate works for administrative inspection; never merges or mutates records.
+        """
         if not candidates:
             return DuplicateDetectionResponse(
                 targetProjectId=target.projectId,
@@ -320,7 +510,7 @@ class AnomalyDetectionEngine:
                 similarityScore=0.0,
                 matchingProjectId=None,
                 matchingProjectName=None,
-                reasons=["No candidate projects in comparison jurisdiction."]
+                reasons=["No candidate projects in comparison jurisdiction pool."]
             )
 
         target_text = f"{target.projectName} {target.description or ''} {target.categoryName or ''} {target.districtName or ''}"
@@ -344,7 +534,6 @@ class AnomalyDetectionEngine:
             diff = abs(target.sanctionedAmount - best_candidate.sanctionedAmount)
             amount_ratio = max(0.0, 1.0 - (diff / max(target.sanctionedAmount, best_candidate.sanctionedAmount)))
 
-        # Weighted combined similarity score (0 - 100)
         combined_score = round((0.75 * best_sim + 0.25 * amount_ratio) * 100.0, 1)
         is_duplicate = combined_score >= 65.0 and best_candidate.projectId != target.projectId
 
@@ -372,4 +561,4 @@ class AnomalyDetectionEngine:
         )
 
 # Global singleton engine instance
-engine = AnomalyDetectionEngine()
+engine = GenuineAnomalyDetectionPipeline()

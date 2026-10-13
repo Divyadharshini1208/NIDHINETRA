@@ -4,8 +4,10 @@ import com.mplads.monitoring.dto.response.AiAnalysisPreviewResponse;
 import com.mplads.monitoring.dto.response.AiMonitoringSummaryResponse;
 import com.mplads.monitoring.dto.response.ApiResponse;
 import com.mplads.monitoring.security.UserPrincipal;
+import com.mplads.monitoring.repository.ProjectRepository;
 import com.mplads.monitoring.service.AiClientService;
 import com.mplads.monitoring.service.RiskAlertService;
+import com.mplads.monitoring.entity.Project;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -14,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -25,6 +28,7 @@ public class AiMonitoringController {
 
     private final RiskAlertService riskAlertService;
     private final AiClientService aiClientService;
+    private final ProjectRepository projectRepository;
 
     @GetMapping("/monitoring-summary")
     @Operation(summary = "Get aggregated AI risk distribution and telemetry metrics")
@@ -61,9 +65,31 @@ public class AiMonitoringController {
         boolean healthy = aiClientService.isAiServiceHealthy();
         Map<String, Object> data = Map.of(
                 "aiServiceConnected", healthy,
-                "engine", "Scikit-Learn / Isolation Forest v2.0",
+                "engine", "Scikit-Learn / Isolation Forest v2.1",
                 "mode", healthy ? "LIVE_FASTAPI_INFERENCE" : "EMBEDDED_DETERMINISTIC_FALLBACK"
         );
         return ResponseEntity.ok(ApiResponse.ok("AI Engine Status", data));
+    }
+
+    @PostMapping("/query")
+    @Operation(summary = "Ask natural-language question grounded strictly in verified scheme records")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> querySchemeData(
+            @RequestBody Map<String, Object> request,
+            @AuthenticationPrincipal UserPrincipal currentUser
+    ) {
+        String query = (String) request.getOrDefault("query", "");
+        List<Project> scoped;
+        if ("ROLE_STATE_NODAL_AUTHORITY".equals(currentUser.getRole()) && currentUser.getStateId() != null) {
+            scoped = projectRepository.findByStateId(currentUser.getStateId());
+        } else if ("ROLE_DISTRICT_AUTHORITY".equals(currentUser.getRole()) && currentUser.getDistrictId() != null) {
+            scoped = projectRepository.findByDistrictId(currentUser.getDistrictId());
+        } else if ("ROLE_MP".equals(currentUser.getRole()) && currentUser.getConstituencyId() != null) {
+            scoped = projectRepository.findByConstituencyId(currentUser.getConstituencyId());
+        } else {
+            scoped = projectRepository.findAll();
+        }
+
+        Map<String, Object> result = aiClientService.queryGroundedAnalytics(query, scoped);
+        return ResponseEntity.ok(ApiResponse.ok("Grounded analytics response generated", result));
     }
 }

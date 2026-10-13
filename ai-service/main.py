@@ -14,17 +14,21 @@ from schemas.models import (
     BatchAnalysisRequest,
     BatchAnalysisResponse,
     DuplicateDetectionRequest,
-    DuplicateDetectionResponse
+    DuplicateDetectionResponse,
+    NlQueryRequest,
+    NlQueryResponse
 )
 from pipeline.anomaly_detector import engine
+from pipeline.model_evaluator import run_pipeline_evaluation
+from pipeline.nl_analytics import nl_engine
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("mplads-ai-service")
 
 app = FastAPI(
     title="MPLADS AI Monitoring & Risk Telemetry Service",
-    description="Explainable anomaly detection, cost anomaly screening, milestone delay classification, and duplicate detection microservice.",
-    version="2.0.0"
+    description="Explainable anomaly detection, cost anomaly screening, milestone delay classification, duplicate detection, and grounded natural-language analytics.",
+    version="2.1.0"
 )
 
 app.add_middleware(
@@ -40,23 +44,26 @@ def health_check():
     return {
         "status": "UP",
         "service": "MPLADS AI Microservice",
-        "version": "2.0.0",
-        "ml_engine": "Scikit-Learn IsolationForest & TF-IDF Vectorizer",
+        "version": "2.1.0",
+        "ml_engine": "Scikit-Learn IsolationForest (150 Estimators, RobustScaler) & TF-IDF Vectorizer",
+        "pipeline_metadata": engine.metadata,
         "capabilities": [
             "Explainable Anomaly Detection",
+            "Multi-Feature Diagnostic Attribution",
             "Potential Cost Anomaly Screening",
-            "Progress vs Expenditure Mismatch",
-            "Milestone Delay Analytics",
+            "Progress vs Expenditure Divergence Analysis",
+            "Milestone Delay Trajectory Classification",
             "Payment Concentration Anomalies",
-            "Duplicate Civil Work Detection"
+            "Duplicate Civil Work Detection",
+            "Grounded Scheme Telemetry Natural-Language Analytics"
         ]
     }
 
 @app.post("/analyze/project", response_model=ProjectAnalysisResponse)
 def analyze_single_project(project: ProjectAnalysisRequest):
     """
-    Comprehensive AI evaluation of a single civil project.
-    Combines Isolation Forest anomaly scoring with rule-weighted explainable factors.
+    Comprehensive ML evaluation of a single civil project.
+    Combines Isolation Forest continuous anomaly inference with feature attribution.
     """
     try:
         result = engine.analyze_project(project)
@@ -114,7 +121,12 @@ def calculate_risk_score_only(project: ProjectAnalysisRequest):
             "riskLevel": res.riskLevel,
             "overallHealth": res.overallHealth,
             "reasons": res.reasons,
-            "analyzedAt": res.analyzedAt
+            "topContributingFeatures": [
+                {"name": f.featureName, "deviance": f.standardizedDeviance, "impact": f.impactSeverity}
+                for f in res.contributingFeatures[:3]
+            ],
+            "analyzedAt": res.analyzedAt,
+            "statutoryNotice": res.statutoryNotice
         }
     except Exception as e:
         logger.error(f"Error calculating risk score: {str(e)}", exc_info=True)
@@ -131,6 +143,46 @@ def detect_duplicates_endpoint(request: DuplicateDetectionRequest):
     except Exception as e:
         logger.error(f"Error during duplicate detection: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Duplicate detection error: {str(e)}")
+
+@app.post("/evaluate/pipeline")
+def evaluate_pipeline_endpoint():
+    """
+    Run empirical model evaluation suite over normal and anomalous benchmark records.
+    Returns sensitivity, specificity, false positive rate, and documented limitations.
+    """
+    try:
+        return run_pipeline_evaluation()
+    except Exception as e:
+        logger.error(f"Error during model evaluation: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Evaluation error: {str(e)}")
+
+@app.post("/retrain")
+def retrain_model_endpoint(n_samples: int = 800):
+    """
+    Trigger reproducible model refitting and persistence to disk.
+    """
+    try:
+        meta = engine.train_and_persist(n_samples=n_samples)
+        return {
+            "status": "SUCCESS",
+            "message": f"Isolation Forest retrained on {n_samples} baseline records and persisted.",
+            "metadata": meta
+        }
+    except Exception as e:
+        logger.error(f"Error during model retraining: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Retraining error: {str(e)}")
+
+@app.post("/analytics/query", response_model=NlQueryResponse)
+def grounded_analytics_query(request: NlQueryRequest):
+    """
+    Natural Language Query assistant grounded in verified scheme records.
+    Produces factual analysis without hallucination.
+    """
+    try:
+        return nl_engine.answer_query(request)
+    except Exception as e:
+        logger.error(f"Error during NL analytics query: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

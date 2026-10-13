@@ -25,4 +25,12 @@ export const aiMonitoringService = {
     const res = await fetchApi<ApiResponse<{ aiServiceConnected: boolean; engine: string; mode: string }>>('/api/ai/health');
     return res.data;
   },
+
+  querySchemeAnalytics: async (query: string): Promise<any> => {
+    const res = await fetchApi<ApiResponse<any>>('/api/ai/query', {
+      method: 'POST',
+      body: JSON.stringify({ query }),
+    });
+    return res.data;
+  },
 };

@@ -18,6 +18,7 @@ com\mplads\monitoring\entity\Role.class
 com\mplads\monitoring\repository\DistrictRepository.class
 com\mplads\monitoring\repository\ProjectProgressRepository.class
 com\mplads\monitoring\entity\District.class
+com\mplads\monitoring\dto\request\ProjectReviewRequest$ProjectReviewRequestBuilder.class
 com\mplads\monitoring\entity\DataImportRecord$DataImportRecordBuilder.class
 com\mplads\monitoring\entity\Document$DocumentBuilder.class
 com\mplads\monitoring\dto\request\ExpenditureRequest.class
@@ -27,6 +28,7 @@ com\mplads\monitoring\entity\Payment$PaymentBuilder.class
 com\mplads\monitoring\repository\StateRepository.class
 com\mplads\monitoring\repository\InvestigationRepository.class
 com\mplads\monitoring\dto\request\ExpenditureRequest$ExpenditureRequestBuilder.class
+com\mplads\monitoring\service\impl\ProjectServiceImpl.class
 com\mplads\monitoring\dto\request\AlertActionRequest$AlertActionRequestBuilder.class
 com\mplads\monitoring\service\impl\ReportServiceImpl.class
 com\mplads\monitoring\dto\response\ProjectResponse.class
@@ -191,6 +193,7 @@ com\mplads\monitoring\controller\AuthController.class
 com\mplads\monitoring\dto\response\LocationDto$DistrictDto.class
 com\mplads\monitoring\service\OfficialMpladsService.class
 com\mplads\monitoring\dto\response\AiMonitoringSummaryResponse.class
+com\mplads\monitoring\dto\request\ProjectReviewRequest.class
 com\mplads\monitoring\dto\response\AiAnalysisPreviewResponse$PredictiveTimeline.class
 com\mplads\monitoring\repository\RoleRepository.class
 com\mplads\monitoring\entity\ProjectCategory.class

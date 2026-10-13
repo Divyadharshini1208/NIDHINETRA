@@ -21,7 +21,8 @@ import { projectService } from '@/services/projectService';
 import { financialService } from '@/services/financialService';
 import { publicService } from '@/services/publicService';
 import { aiMonitoringService } from '@/services/aiMonitoringService';
-import { Project, FinancialSummary, InsightsSummary, AiMonitoringSummary } from '@/types';
+import { officialDataService } from '@/services/officialDataService';
+import { Project, FinancialSummary, InsightsSummary, AiMonitoringSummary, OfficialMpladsData } from '@/types';
 import { formatNumber } from '@/utils/formatters';
 import {
   Building2,
@@ -44,18 +45,22 @@ import {
   Activity,
   UserCheck,
   History,
-  ShieldCheck
+  ShieldCheck,
+  ExternalLink,
+  Landmark
 } from 'lucide-react';
 
 export default function MinistryDashboardPage() {
   const { user, isAuthenticated } = useAuth();
-  const { success, error: toastError } = useToast();
+  const { success, error: toastError, info } = useToast();
 
   const [isLoading, setIsLoading] = useState(true);
+  const [isSyncingOfficial, setIsSyncingOfficial] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [financials, setFinancials] = useState<FinancialSummary | null>(null);
   const [insights, setInsights] = useState<InsightsSummary | null>(null);
   const [aiSummary, setAiSummary] = useState<AiMonitoringSummary | null>(null);
+  const [officialData, setOfficialData] = useState<OfficialMpladsData>(officialDataService.getFallbackOfficialData());
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
@@ -68,22 +73,39 @@ export default function MinistryDashboardPage() {
 
     setIsLoading(true);
     try {
-      const [projRes, finRes, insRes, aiRes] = await Promise.all([
+      const [projRes, finRes, insRes, aiRes, offData] = await Promise.all([
         projectService.getProjects({ size: 10 }),
         financialService.getSummary().catch(() => null),
         publicService.getInsightsSummary().catch(() => null),
-        aiMonitoringService.getMonitoringSummary().catch(() => null)
+        aiMonitoringService.getMonitoringSummary().catch(() => null),
+        officialDataService.getOfficialSummary().catch(() => null)
       ]);
       setProjects(projRes.content || []);
       setFinancials(finRes);
       setInsights(insRes?.data || null);
       setAiSummary(aiRes);
+      if (offData) setOfficialData(offData);
     } catch (err: any) {
       if (!err.message?.includes('Bearer token') && !err.message?.includes('authentication')) {
         toastError('Data Load Error', err.message || 'Could not fetch dashboard metrics');
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSyncOfficial = async () => {
+    setIsSyncingOfficial(true);
+    try {
+      const updated = await officialDataService.syncOfficialData();
+      if (updated) {
+        setOfficialData(updated);
+        success('MoSPI Telemetry Synchronized', `Live eSAKSHI data refreshed (${updated.currentTenure}).`);
+      }
+    } catch (err: any) {
+      toastError('Sync Warning', 'Could not refresh live MoSPI server; maintaining verified fallback snapshot.');
+    } finally {
+      setIsSyncingOfficial(false);
     }
   };
 
@@ -143,6 +165,80 @@ export default function MinistryDashboardPage() {
                 Data Import
               </Button>
             </Link>
+          </div>
+        </div>
+
+        {/* OFFICIAL MOSPI eSAKSHI NATIONAL TELEMETRY CARD */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-4 sm:p-5 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="p-1 rounded bg-gov-navy-50 text-gov-navy-900 border border-slate-200">
+                  <Landmark className="w-4 h-4 text-gov-saffron" />
+                </span>
+                <h2 className="text-sm sm:text-base font-bold text-gov-navy-900">
+                  Official MoSPI eSAKSHI National Telemetry
+                </h2>
+                <span
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                    officialData.isLiveFetched
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                      : 'bg-amber-100 text-amber-800 border border-amber-300'
+                  }`}
+                >
+                  {officialData.isLiveFetched ? 'VERIFIED LIVE MOSPI SYNC' : 'OFFICIAL MOSPI SNAPSHOT'}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Direct statutory telemetry from Ministry of Statistics & Programme Implementation (
+                <a
+                  href={officialData.sourcePortalUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gov-navy-800 underline inline-flex items-center gap-0.5 font-medium"
+                >
+                  mplads.mospi.gov.in <ExternalLink className="w-2.5 h-2.5" />
+                </a>
+                ) &bull; Current Tenure: <strong>{officialData.currentTenure}</strong>
+              </p>
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSyncOfficial}
+              isLoading={isSyncingOfficial}
+              leftIcon={<RefreshCw className="w-3.5 h-3.5 text-gov-saffron" />}
+              className="text-xs font-semibold self-start sm:self-auto shrink-0"
+            >
+              Sync Official MoSPI Telemetry
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+              <span className="text-[10px] uppercase font-bold text-slate-500 block">Allocated Limit (MPs)</span>
+              <span className="text-base font-black text-gov-navy-900 mt-0.5 block">{officialData.allocatedLimitCr}</span>
+              <span className="text-[9px] text-slate-400">Statutory entitlement pool</span>
+            </div>
+
+            <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+              <span className="text-[10px] uppercase font-bold text-slate-500 block">Works Recommended</span>
+              <span className="text-base font-black text-blue-900 mt-0.5 block">{officialData.worksRecommendedCr}</span>
+              <span className="text-[9px] text-slate-400">{formatNumber(officialData.worksRecommendedCount)} works recommended</span>
+            </div>
+
+            <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+              <span className="text-[10px] uppercase font-bold text-slate-500 block">Works Sanctioned</span>
+              <span className="text-base font-black text-amber-900 mt-0.5 block">{officialData.worksSanctionedCr}</span>
+              <span className="text-[9px] text-slate-400">{formatNumber(officialData.worksSanctionedCount)} sanctioned works</span>
+            </div>
+
+            <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+              <span className="text-[10px] uppercase font-bold text-slate-500 block">Works Completed</span>
+              <span className="text-base font-black text-emerald-900 mt-0.5 block">{officialData.worksCompletedCr}</span>
+              <span className="text-[9px] text-slate-400">{formatNumber(officialData.worksCompletedCount)} completed delivery</span>
+            </div>
           </div>
         </div>
 

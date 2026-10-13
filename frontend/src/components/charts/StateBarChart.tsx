@@ -36,24 +36,32 @@ const DEFAULT_DATA = [
 
 export function StateBarChart({ data = DEFAULT_DATA }: StateBarChartProps) {
   const chartData = data && data.length > 0 ? data.slice(0, 10) : DEFAULT_DATA;
+  const [isMobile, setIsMobile] = React.useState(false);
+
+  React.useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 640);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   return (
-    <div className="w-full h-80">
+    <div className="w-full h-72 sm:h-80">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
           data={chartData}
-          margin={{ top: 10, right: 20, left: 0, bottom: 25 }}
+          margin={{ top: 10, right: 15, left: -10, bottom: isMobile ? 15 : 25 }}
         >
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
           <XAxis
-            dataKey="stateName"
-            tick={{ fontSize: 11, fill: '#475569' }}
-            angle={-25}
-            textAnchor="end"
+            dataKey={isMobile ? 'stateCode' : 'stateName'}
+            tick={{ fontSize: isMobile ? 10 : 11, fill: '#475569' }}
+            angle={isMobile ? 0 : -25}
+            textAnchor={isMobile ? 'middle' : 'end'}
             interval={0}
           />
           <YAxis
-            tick={{ fontSize: 11, fill: '#475569' }}
+            tick={{ fontSize: 10, fill: '#475569' }}
             tickFormatter={(val) => `₹${val}Cr`}
           />
           <Tooltip

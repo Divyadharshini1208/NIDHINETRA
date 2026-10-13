@@ -1,0 +1,7 @@
+target/
+*.class
+.mvn/
+.git
+.gitignore
+.env
+*.log

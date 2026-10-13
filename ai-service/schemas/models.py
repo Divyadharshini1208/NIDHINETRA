@@ -71,6 +71,15 @@ class IndicatorsContainer(BaseModel):
     paymentAnomaly: PaymentAnomalyIndicator
     duplicateRisk: DuplicateRiskIndicator
 
+class ContributingFeature(BaseModel):
+    featureKey: str
+    featureName: str
+    observedValue: float
+    baselineMedian: float
+    standardizedDeviance: float
+    impactSeverity: str # HIGH, MEDIUM, LOW
+    description: str
+
 class ProjectAnalysisResponse(BaseModel):
     projectId: Optional[str] = None
     riskScore: int = Field(description="Normalized integer 0-100")
@@ -79,8 +88,11 @@ class ProjectAnalysisResponse(BaseModel):
     reasons: List[str] = []
     indicators: IndicatorsContainer
     isolationForestRawScore: float = 0.0
+    contributingFeatures: List[ContributingFeature] = []
     recommendations: List[str] = []
     analyzedAt: str
+    modelMetadata: Optional[Dict[str, Any]] = None
+    statutoryNotice: str = "Statutory Decision Support: Flagged indicators represent statistical variations requiring human review; NOT proof of fraud."
 
 class DuplicateCandidate(BaseModel):
     projectId: str
@@ -114,3 +126,17 @@ class BatchAnalysisResponse(BaseModel):
     lowRiskCount: int
     criticalRiskCount: int
     results: List[ProjectAnalysisResponse]
+
+class NlQueryRequest(BaseModel):
+    query: str
+    scopeRole: Optional[str] = "ROLE_MINISTRY_ADMIN"
+    projects: Optional[List[ProjectAnalysisRequest]] = []
+
+class NlQueryResponse(BaseModel):
+    query: str
+    answer: str
+    keyFindings: List[str] = []
+    citedProjects: List[str] = []
+    evidenceSources: List[str] = []
+    suggestedActions: List[str] = []
+    statutoryNotice: str = "Deterministic Grounded Analytics: Output generated strictly from verified database records without speculative generation."

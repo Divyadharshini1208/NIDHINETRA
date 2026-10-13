@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import '@/styles/globals.css';
 import { ToastProvider } from '@/context/ToastContext';
 import { AuthProvider } from '@/context/AuthContext';
+import { SidebarProvider } from '@/context/SidebarContext';
 
 export const metadata: Metadata = {
   title: 'NIDHINETRA — AI-Powered Public Fund Intelligence Platform | MPLADS Monitoring',
@@ -37,9 +38,11 @@ export default function RootLayout({
       <body className="antialiased min-h-screen flex flex-col bg-[#F8FAFC] text-slate-900">
         <ToastProvider>
           <AuthProvider>
-            <div id="main-content" className="flex-1 flex flex-col">
-              {children}
-            </div>
+            <SidebarProvider>
+              <div id="main-content" className="flex-1 flex flex-col">
+                {children}
+              </div>
+            </SidebarProvider>
           </AuthProvider>
         </ToastProvider>
       </body>
