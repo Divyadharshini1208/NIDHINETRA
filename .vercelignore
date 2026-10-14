@@ -3,8 +3,7 @@
 # Prevents Vercel from bundling backend, AI service, datasets, or caches
 # ==============================================================================
 
-# Microservices to exclude from Vercel (Deployed separately on Render / Railway / Cloud Server)
-ai-service/
+# Backend microservices excluded from Vercel (Deployed separately on Render / Railway / Cloud Server)
 backend/
 database/
 

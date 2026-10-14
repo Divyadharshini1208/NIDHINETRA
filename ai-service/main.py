@@ -3,6 +3,14 @@ MPLADS AI Decision Support & Risk Detection Service
 Ministry of Statistics & Programme Implementation (MoSPI), Government of India
 """
 
+import sys
+from pathlib import Path
+
+# Ensure ai-service root directory is in sys.path for robust module resolution on Vercel/serverless environments
+AI_SERVICE_DIR = Path(__file__).resolve().parent
+if str(AI_SERVICE_DIR) not in sys.path:
+    sys.path.insert(0, str(AI_SERVICE_DIR))
+
 import logging
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware

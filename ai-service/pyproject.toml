@@ -1,0 +1,15 @@
+[project]
+name = "mplads-ai-service"
+version = "2.1.0"
+description = "MPLADS AI Monitoring & Risk Telemetry Service"
+requires-python = ">=3.11"
+
+[tool.fastapi]
+entrypoint = "main:app"
+
+[tool.vercel]
+entrypoint = "main:app"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
