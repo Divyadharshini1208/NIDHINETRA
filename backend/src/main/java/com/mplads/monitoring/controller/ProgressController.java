@@ -9,7 +9,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -19,12 +18,16 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/progress")
-@RequiredArgsConstructor
 @Tag(name = "Progress Monitoring", description = "Endpoints for tracking physical and financial project execution milestones")
 @SecurityRequirement(name = "BearerAuth")
 public class ProgressController {
 
     private final ProgressService progressService;
+
+    public ProgressController(ProgressService progressService) {
+        this.progressService = progressService;
+    }
+
 
     @GetMapping("/{projectId}")
     @Operation(summary = "Get physical progress timeline for a project")

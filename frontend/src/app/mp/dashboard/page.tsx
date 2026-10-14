@@ -13,7 +13,9 @@ import { Button } from '@/components/ui/Button';
 import { StatusPieChart } from '@/components/charts/StatusPieChart';
 import { TrendAreaChart } from '@/components/charts/TrendAreaChart';
 import { CategoryBarChart } from '@/components/charts/CategoryBarChart';
+import { LoadingState } from '@/components/ui/StateViews';
 import { useAuth } from '@/context/AuthContext';
+import { useRequireAuth } from '@/utils/useRequireAuth';
 import { useToast } from '@/context/ToastContext';
 import { projectService } from '@/services/projectService';
 import { aiMonitoringService } from '@/services/aiMonitoringService';
@@ -44,7 +46,7 @@ import {
 } from 'lucide-react';
 
 export default function MpDashboardPage() {
-  const { user } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useRequireAuth(['ROLE_MP']);
   const { error: toastError, success } = useToast();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -115,6 +117,14 @@ export default function MpDashboardPage() {
   const handleExportSummary = (reportType: string) => {
     success('Report Export Initiated', `Downloading ${reportType} for ${constituencyName} Constituency.`);
   };
+
+  if (authLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <LoadingState message="Verifying Member of Parliament credentials..." />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex bg-slate-100/70">

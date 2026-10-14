@@ -1,6 +1,8 @@
 import os
 import json
 import datetime
+import hashlib
+import threading
 import numpy as np
 import pandas as pd
 from typing import List, Dict, Any, Tuple, Optional
@@ -23,8 +25,12 @@ from schemas.models import (
     DuplicateRiskIndicator,
     ContributingFeature,
     DuplicateCandidate,
-    DuplicateDetectionResponse
+    DuplicateDetectionResponse,
+    PyTorchInferenceResult,
+    FundUtilizationSummary
 )
+from pipeline.data_processor import DataProcessor
+from pipeline.pytorch_autoencoder import pytorch_engine
 
 # Sectoral baseline unit benchmarks (in ₹ Lakhs) for MPLADS civil asset categories
 CATEGORY_BENCHMARKS = {
@@ -75,6 +81,13 @@ class GenuineAnomalyDetectionPipeline:
         self.iso_forest: Optional[IsolationForest] = None
         self.metadata: Dict[str, Any] = {}
         self.baseline_stats: Dict[str, Dict[str, float]] = {}
+
+        # Thread-safe caching for TF-IDF candidate corpus vectors
+        self._duplicate_cache_lock = threading.Lock()
+        self._candidate_corpus_hash: Optional[str] = None
+        self._cached_vectorizer: Optional[TfidfVectorizer] = None
+        self._cached_candidate_matrix: Optional[Any] = None
+        self._cached_candidate_ids: Optional[List[str]] = None
 
         MODEL_DIR.mkdir(parents=True, exist_ok=True)
         self._load_or_train_pipeline()
@@ -464,9 +477,48 @@ class GenuineAnomalyDetectionPipeline:
             risk_level = "LOW"
             overall_health = "HEALTHY"
 
-        if not reasons:
-            reasons.append("Project indicators align with typical statutory progress and disbursement patterns.")
-            recommendations.append("Maintain standard periodic reporting and quarterly milestone audits.")
+        # Compute Fund Utilization & Data Completeness Metrics using Pandas/NumPy
+        p_dict = project.model_dump() if hasattr(project, "model_dump") else project.dict()
+        fund_metrics = DataProcessor.validate_and_analyze_fund_utilization(p_dict)
+        fund_summary = FundUtilizationSummary(
+            sanctionedAmountLakhs=fund_metrics.sanctionedAmountLakhs,
+            releasedAmountLakhs=fund_metrics.releasedAmountLakhs,
+            expenditureAmountLakhs=fund_metrics.expenditureAmountLakhs,
+            unspentBalanceLakhs=fund_metrics.unspentBalanceLakhs,
+            fundUtilizationPct=fund_metrics.fundUtilizationPct,
+            drawdownRatioPct=fund_metrics.drawdownRatioPct,
+            physicalProgressPct=fund_metrics.physicalProgressPct,
+            financialProgressPct=fund_metrics.financialProgressPct,
+            progressDivergenceGap=fund_metrics.progressDivergenceGap,
+            expenditurePerProgressPoint=fund_metrics.expenditurePerProgressPoint,
+            dataCompletenessStatus=fund_metrics.dataCompletenessStatus,
+            dataQualityWarnings=fund_metrics.dataQualityWarnings,
+            isValidForMlInference=fund_metrics.isValidForMlInference
+        )
+
+        # PyTorch Autoencoder Inference
+        raw_vec = feature_vector[0]
+        pt_eval = pytorch_engine.infer(raw_vec)
+        pytorch_result = PyTorchInferenceResult(
+            modelName=pt_eval.get("modelName", "PyTorch Tabular Autoencoder"),
+            modelVersion=pt_eval.get("modelVersion", "2.1.0-torch"),
+            modelStatus=pt_eval.get("modelStatus", "VALIDATED"),
+            device=pt_eval.get("device", "cpu"),
+            reconstructionMse=pt_eval.get("reconstructionMse", 0.0),
+            thresholdMse=pt_eval.get("thresholdMse", 0.2675),
+            isAnomalous=pt_eval.get("isAnomalous", False),
+            reconstructionConfidence=pt_eval.get("reconstructionConfidence", 0.0),
+            indicator=pt_eval.get("indicator", "CONGRUENT_RECONSTRUCTION"),
+            explanation=pt_eval.get("explanation", "")
+        )
+
+        # Handle Insufficient Data / Missing values explicitly
+        if fund_metrics.dataCompletenessStatus == "INSUFFICIENT_DATA":
+            risk_level = "INSUFFICIENT_DATA"
+            overall_health = "DATA_INCOMPLETE"
+            warning_text = f"Data Quality Notice: Incomplete statutory records ({', '.join(fund_metrics.dataQualityWarnings[:2])}). Inferences marked uncalibrated."
+            reasons.insert(0, warning_text)
+            recommendations.insert(0, "Update baseline financial records in district portal before initiating ML risk verification.")
 
         # Compute per-feature attributions
         contributing_features = self._calculate_feature_attributions(raw_dict)
@@ -488,12 +540,16 @@ class GenuineAnomalyDetectionPipeline:
             contributingFeatures=contributing_features,
             recommendations=recommendations,
             analyzedAt=datetime.datetime.now().isoformat(),
+            pytorchEvaluation=pytorch_result,
+            fundUtilization=fund_summary,
             modelMetadata={
-                "engine": "Scikit-Learn IsolationForest v2.1",
+                "engine": "Scikit-Learn IsolationForest v2.1 & PyTorch Tabular Autoencoder",
                 "scaler": "RobustScaler",
                 "featuresEvaluated": len(FEATURE_SPECS),
                 "contamination": 0.12,
-                "calibratedScore": final_score
+                "calibratedScore": final_score,
+                "pytorchMse": pt_eval.get("reconstructionMse", 0.0),
+                "pytorchThreshold": pt_eval.get("thresholdMse", 0.2675)
             },
             statutoryNotice="Statutory Decision Support: Flagged indicators represent statistical variations requiring human review; NOT proof of fraud."
         )
@@ -519,11 +575,30 @@ class GenuineAnomalyDetectionPipeline:
             for c in candidates
         ]
 
-        all_texts = [target_text] + candidate_texts
-        vectorizer = TfidfVectorizer(ngram_range=(1, 3), analyzer='word', min_df=1)
-        tfidf_matrix = vectorizer.fit_transform(all_texts)
+        # Thread-safe cached corpus vectorization
+        with self._duplicate_cache_lock:
+            corpus_key = "|".join(f"{c.projectId}:{c.projectName}" for c in candidates)
+            current_hash = hashlib.md5(corpus_key.encode('utf-8')).hexdigest()
 
-        cosine_sims = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:]).flatten()
+            if (self._candidate_corpus_hash == current_hash and
+                self._cached_vectorizer is not None and
+                self._cached_candidate_matrix is not None):
+                # High-speed path: transform only target text against pre-fitted candidate matrix
+                target_vec = self._cached_vectorizer.transform([target_text])
+                cosine_sims = cosine_similarity(target_vec, self._cached_candidate_matrix).flatten()
+            else:
+                # Cold-path or modified candidate pool: fit vectorizer on candidates
+                vectorizer = TfidfVectorizer(ngram_range=(1, 3), analyzer='word', min_df=1)
+                candidate_matrix = vectorizer.fit_transform(candidate_texts)
+                target_vec = vectorizer.transform([target_text])
+                cosine_sims = cosine_similarity(target_vec, candidate_matrix).flatten()
+
+                # Atomically update cached matrix and signature
+                self._candidate_corpus_hash = current_hash
+                self._cached_vectorizer = vectorizer
+                self._cached_candidate_matrix = candidate_matrix
+                self._cached_candidate_ids = [c.projectId for c in candidates]
+
         best_idx = int(np.argmax(cosine_sims))
         best_sim = float(cosine_sims[best_idx])
         best_candidate = candidates[best_idx]
@@ -560,5 +635,18 @@ class GenuineAnomalyDetectionPipeline:
             }
         )
 
+    def invalidate_duplicate_cache(self) -> dict:
+        """
+        Thread-safe invalidation of fitted vectorizer and document-term matrix.
+        Triggered when new projects are registered or project descriptions updated.
+        """
+        with self._duplicate_cache_lock:
+            self._candidate_corpus_hash = None
+            self._cached_vectorizer = None
+            self._cached_candidate_matrix = None
+            self._cached_candidate_ids = []
+            return {"status": "success", "message": "Duplicate candidate corpus cache invalidated successfully"}
+
 # Global singleton engine instance
 engine = GenuineAnomalyDetectionPipeline()
+

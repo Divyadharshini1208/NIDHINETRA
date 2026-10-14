@@ -21,7 +21,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/ai")
-@RequiredArgsConstructor
 @Tag(name = "AI Monitoring & Telemetry", description = "Endpoints for machine learning risk telemetry, duplicate screening, and anomaly detection")
 @SecurityRequirement(name = "BearerAuth")
 public class AiMonitoringController {
@@ -30,11 +29,20 @@ public class AiMonitoringController {
     private final AiClientService aiClientService;
     private final ProjectRepository projectRepository;
 
+    public AiMonitoringController(
+            RiskAlertService riskAlertService,
+            AiClientService aiClientService,
+            ProjectRepository projectRepository
+    ) {
+        this.riskAlertService = riskAlertService;
+        this.aiClientService = aiClientService;
+        this.projectRepository = projectRepository;
+    }
+
     @GetMapping("/monitoring-summary")
     @Operation(summary = "Get aggregated AI risk distribution and telemetry metrics")
     public ResponseEntity<ApiResponse<AiMonitoringSummaryResponse>> getMonitoringSummary(
-            @AuthenticationPrincipal UserPrincipal currentUser
-    ) {
+            @AuthenticationPrincipal UserPrincipal currentUser) {
         AiMonitoringSummaryResponse response = riskAlertService.getMonitoringSummary(currentUser);
         return ResponseEntity.ok(ApiResponse.ok("AI monitoring summary retrieved", response));
     }
@@ -43,8 +51,7 @@ public class AiMonitoringController {
     @Operation(summary = "Trigger on-demand AI inference and update project risk status")
     public ResponseEntity<ApiResponse<AiAnalysisPreviewResponse>> analyzeProject(
             @PathVariable Long id,
-            @AuthenticationPrincipal UserPrincipal currentUser
-    ) {
+            @AuthenticationPrincipal UserPrincipal currentUser) {
         AiAnalysisPreviewResponse response = riskAlertService.analyzeProjectOnDemand(id, currentUser);
         return ResponseEntity.ok(ApiResponse.ok("Project analysis completed successfully", response));
     }
@@ -53,8 +60,7 @@ public class AiMonitoringController {
     @Operation(summary = "Screen project against candidate pool for potential duplicate works")
     public ResponseEntity<ApiResponse<Map<String, Object>>> detectDuplicates(
             @PathVariable Long id,
-            @AuthenticationPrincipal UserPrincipal currentUser
-    ) {
+            @AuthenticationPrincipal UserPrincipal currentUser) {
         Map<String, Object> response = riskAlertService.checkDuplicates(id, currentUser);
         return ResponseEntity.ok(ApiResponse.ok("Duplicate work screening completed", response));
     }
@@ -66,8 +72,7 @@ public class AiMonitoringController {
         Map<String, Object> data = Map.of(
                 "aiServiceConnected", healthy,
                 "engine", "Scikit-Learn / Isolation Forest v2.1",
-                "mode", healthy ? "LIVE_FASTAPI_INFERENCE" : "EMBEDDED_DETERMINISTIC_FALLBACK"
-        );
+                "mode", healthy ? "LIVE_FASTAPI_INFERENCE" : "EMBEDDED_DETERMINISTIC_FALLBACK");
         return ResponseEntity.ok(ApiResponse.ok("AI Engine Status", data));
     }
 
@@ -75,8 +80,7 @@ public class AiMonitoringController {
     @Operation(summary = "Ask natural-language question grounded strictly in verified scheme records")
     public ResponseEntity<ApiResponse<Map<String, Object>>> querySchemeData(
             @RequestBody Map<String, Object> request,
-            @AuthenticationPrincipal UserPrincipal currentUser
-    ) {
+            @AuthenticationPrincipal UserPrincipal currentUser) {
         String query = (String) request.getOrDefault("query", "");
         List<Project> scoped;
         if ("ROLE_STATE_NODAL_AUTHORITY".equals(currentUser.getRole()) && currentUser.getStateId() != null) {
@@ -91,5 +95,28 @@ public class AiMonitoringController {
 
         Map<String, Object> result = aiClientService.queryGroundedAnalytics(query, scoped);
         return ResponseEntity.ok(ApiResponse.ok("Grounded analytics response generated", result));
+    }
+
+    @GetMapping("/models/status")
+    @Operation(summary = "Get operational status of Scikit-Learn and PyTorch models")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getAiModelsStatus() {
+        Map<String, Object> status = aiClientService.getAiModelsStatus();
+        return ResponseEntity.ok(ApiResponse.ok("AI model status retrieved", status));
+    }
+
+    @GetMapping("/models/compare")
+    @Operation(summary = "Empirical benchmark comparison between Scikit-Learn baseline and PyTorch autoencoder")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> compareAiModels() {
+        Map<String, Object> comparison = aiClientService.compareAiModels();
+        return ResponseEntity.ok(ApiResponse.ok("Model comparison benchmark retrieved", comparison));
+    }
+
+    @PostMapping("/analyze-pytorch/{id}")
+    @Operation(summary = "Evaluate tabular reconstruction anomaly score via PyTorch Autoencoder")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> analyzePyTorch(@PathVariable Long id) {
+        Project project = projectRepository.findById(id)
+                .orElseThrow(() -> new com.mplads.monitoring.exception.ResourceNotFoundException("Project", "id", id));
+        Map<String, Object> result = aiClientService.evaluatePyTorch(project);
+        return ResponseEntity.ok(ApiResponse.ok("PyTorch evaluation completed", result));
     }
 }

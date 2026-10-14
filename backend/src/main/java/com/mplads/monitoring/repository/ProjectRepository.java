@@ -26,28 +26,44 @@ public interface ProjectRepository extends JpaRepository<Project, Long>, JpaSpec
     @EntityGraph(attributePaths = {"state", "district", "constituency", "category", "mpUser"})
     Optional<Project> findById(Long id);
 
+    @Override
+    @EntityGraph(attributePaths = {"state", "district", "constituency", "category", "mpUser"})
+    List<Project> findAll();
+
     Optional<Project> findByProjectId(String projectId);
 
     boolean existsByProjectId(String projectId);
 
+    @EntityGraph(attributePaths = {"state", "district", "constituency", "category", "mpUser"})
     List<Project> findByStateId(Long stateId);
 
+    @EntityGraph(attributePaths = {"state", "district", "constituency", "category", "mpUser"})
     List<Project> findByDistrictId(Long districtId);
 
+    @EntityGraph(attributePaths = {"state", "district", "constituency", "category", "mpUser"})
     List<Project> findByConstituencyId(Long constituencyId);
 
+    @EntityGraph(attributePaths = {"state", "district", "constituency", "category", "mpUser"})
     List<Project> findByMpUserId(Long mpUserId);
 
+    @EntityGraph(attributePaths = {"state", "district", "constituency", "category", "mpUser"})
     List<Project> findByStatus(ProjectStatus status);
 
+    @EntityGraph(attributePaths = {"state", "district", "constituency", "category", "mpUser"})
     List<Project> findByRiskLevel(String riskLevel);
 
+    @EntityGraph(attributePaths = {"state", "district", "constituency", "category", "mpUser"})
+    List<Project> findByImplementingAgencyIgnoreCase(String implementingAgency);
+
+    @EntityGraph(attributePaths = {"state", "district", "constituency", "category", "mpUser"})
     @Query("SELECT p FROM Project p WHERE p.state.id = :stateId")
     Page<Project> findByStateId(@Param("stateId") Long stateId, Pageable pageable);
 
+    @EntityGraph(attributePaths = {"state", "district", "constituency", "category", "mpUser"})
     @Query("SELECT p FROM Project p WHERE p.district.id = :districtId")
     Page<Project> findByDistrictId(@Param("districtId") Long districtId, Pageable pageable);
 
+    @EntityGraph(attributePaths = {"state", "district", "constituency", "category", "mpUser"})
     @Query("SELECT p FROM Project p WHERE p.constituency.id = :constituencyId")
     Page<Project> findByConstituencyId(@Param("constituencyId") Long constituencyId, Pageable pageable);
 

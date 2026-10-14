@@ -11,7 +11,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -21,12 +20,16 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/financials")
-@RequiredArgsConstructor
 @Tag(name = "Financial Operations", description = "REST APIs for sanctions, fund releases, expenditures, payments, and summaries")
 @SecurityRequirement(name = "BearerAuth")
 public class FinancialController {
 
     private final FinancialService financialService;
+
+    public FinancialController(FinancialService financialService) {
+        this.financialService = financialService;
+    }
+
 
     @GetMapping("/summary")
     @Operation(summary = "Get overall role-scoped financial summary (Sanctioned, Released, Expenditure, Utilization %)")

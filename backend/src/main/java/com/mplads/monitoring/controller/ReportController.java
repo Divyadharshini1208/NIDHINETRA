@@ -7,7 +7,6 @@ import com.mplads.monitoring.service.ReportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -20,12 +19,16 @@ import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/reports")
-@RequiredArgsConstructor
 @Tag(name = "Reports & Analytics", description = "Endpoints for generating structured reports and export previews")
 @SecurityRequirement(name = "BearerAuth")
 public class ReportController {
 
     private final ReportService reportService;
+
+    public ReportController(ReportService reportService) {
+        this.reportService = reportService;
+    }
+
 
     @GetMapping("/preview")
     @Operation(summary = "Generate structured report preview table and metrics")

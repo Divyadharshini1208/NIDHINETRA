@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { useRouter } from 'next/navigation';
 import { User, RoleType } from '@/types';
 import { authService, LoginPayload, RegisterPayload } from '@/services/authService';
+import { locationService } from '@/services/locationService';
 import { useToast } from './ToastContext';
 
 interface AuthContextType {
@@ -50,11 +51,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         setToken(storedToken);
         setUser(JSON.parse(storedUser));
+        if (typeof document !== 'undefined') {
+          document.cookie = `mplads_token=${storedToken}; path=/; max-age=86400; SameSite=Lax`;
+        }
         setIsLoading(false);
         return;
       } catch (e) {
         localStorage.removeItem('mplads_token');
         localStorage.removeItem('mplads_user');
+        if (typeof document !== 'undefined') {
+          document.cookie = 'mplads_token=; path=/; max-age=0; SameSite=Lax';
+        }
+      }
+    } else {
+      if (typeof document !== 'undefined') {
+        document.cookie = 'mplads_token=; path=/; max-age=0; SameSite=Lax';
       }
     }
 
@@ -71,6 +82,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(authenticatedUser);
         localStorage.setItem('mplads_token', accessToken);
         localStorage.setItem('mplads_user', JSON.stringify(authenticatedUser));
+        if (typeof document !== 'undefined') {
+          document.cookie = `mplads_token=${accessToken}; path=/; max-age=86400; SameSite=Lax`;
+        }
         sessionStorage.removeItem('mplads_signed_out');
 
         const targetUrl = getRoleDashboardUrl(authenticatedUser.role);
@@ -110,7 +124,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(null);
     localStorage.removeItem('mplads_token');
     localStorage.removeItem('mplads_user');
+    if (typeof document !== 'undefined') {
+      document.cookie = 'mplads_token=; path=/; max-age=0; SameSite=Lax';
+    }
     sessionStorage.setItem('mplads_signed_out', 'true');
+    locationService.clearCache();
     info('Logged Out', 'You have been safely signed out from the portal');
     router.push('/login');
   };

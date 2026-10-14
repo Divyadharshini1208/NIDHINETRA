@@ -13,7 +13,6 @@ import com.mplads.monitoring.repository.ProjectRepository;
 import com.mplads.monitoring.repository.RiskAlertRepository;
 import com.mplads.monitoring.security.UserPrincipal;
 import com.mplads.monitoring.service.ProgressService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -26,13 +25,24 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class ProgressServiceImpl implements ProgressService {
 
     private final ProjectRepository projectRepository;
     private final ProjectProgressRepository progressRepository;
     private final DocumentRepository documentRepository;
     private final RiskAlertRepository riskAlertRepository;
+
+    public ProgressServiceImpl(
+            ProjectRepository projectRepository,
+            ProjectProgressRepository progressRepository,
+            DocumentRepository documentRepository,
+            RiskAlertRepository riskAlertRepository) {
+        this.projectRepository = projectRepository;
+        this.progressRepository = progressRepository;
+        this.documentRepository = documentRepository;
+        this.riskAlertRepository = riskAlertRepository;
+    }
+
 
     @Override
     @Transactional(readOnly = true)

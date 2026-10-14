@@ -6,7 +6,6 @@ import com.mplads.monitoring.entity.ProjectStatus;
 import com.mplads.monitoring.repository.ProjectRepository;
 import com.mplads.monitoring.security.UserPrincipal;
 import com.mplads.monitoring.service.MapService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,10 +13,14 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class MapServiceImpl implements MapService {
 
     private final ProjectRepository projectRepository;
+
+    public MapServiceImpl(ProjectRepository projectRepository) {
+        this.projectRepository = projectRepository;
+    }
+
 
     @Override
     @Transactional(readOnly = true)

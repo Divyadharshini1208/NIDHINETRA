@@ -11,4 +11,7 @@ public interface AiClientService {
     Map<String, Object> detectDuplicates(Project targetProject, List<Project> candidates);
     boolean isAiServiceHealthy();
     Map<String, Object> queryGroundedAnalytics(String query, List<Project> scopedProjects);
+    Map<String, Object> getAiModelsStatus();
+    Map<String, Object> compareAiModels();
+    Map<String, Object> evaluatePyTorch(Project project);
 }

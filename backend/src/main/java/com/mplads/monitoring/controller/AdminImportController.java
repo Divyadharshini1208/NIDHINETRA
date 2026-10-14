@@ -10,7 +10,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -26,13 +25,17 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/admin/import")
-@RequiredArgsConstructor
 @Tag(name = "Admin Data Import", description = "Endpoints for bulk CSV/Excel validation, preview, and execution (Ministry Admin only)")
 @SecurityRequirement(name = "BearerAuth")
 @PreAuthorize("hasRole('MINISTRY_ADMIN')")
 public class AdminImportController {
 
     private final AdminDataImportService importService;
+
+    public AdminImportController(AdminDataImportService importService) {
+        this.importService = importService;
+    }
+
 
     @PostMapping(value = "/validate", consumes = {"multipart/form-data"})
     @Operation(summary = "Upload and validate CSV file without saving to database")

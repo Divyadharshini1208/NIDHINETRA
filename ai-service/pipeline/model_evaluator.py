@@ -156,6 +156,129 @@ def run_pipeline_evaluation() -> Dict[str, Any]:
         ]
     }
 
+
+def run_dual_model_comparison() -> Dict[str, Any]:
+    """
+    Evaluates both Scikit-Learn IsolationForest and PyTorch Tabular Autoencoder
+    side-by-side on identical reference cases to compare anomaly concordance.
+    """
+    import datetime
+    from pipeline.pytorch_autoencoder import pytorch_engine
+
+    # Benchmark test cases
+    benchmark_cases = [
+        # Normal reference cases
+        ("BENCH-NORM-01", "Drinking Water RO Plant", "Drinking Water", 25.0, 22.0, 18.0, 80, 81.8, "2026-12-31", False),
+        ("BENCH-NORM-02", "School Science Lab Upgradation", "Education & Schools", 35.0, 28.0, 20.0, 65, 71.4, "2026-11-15", False),
+        ("BENCH-NORM-03", "Rural Concrete Road 1.2km", "Roads & Bridges", 60.0, 50.0, 42.0, 70, 70.0, "2026-10-20", False),
+        ("BENCH-NORM-04", "Solar Street Lighting Grid", "Energy & Lighting", 18.0, 18.0, 18.0, 100, 100.0, "2026-09-15", False),
+        # Deliberately anomalous cases
+        ("BENCH-ANOM-01", "Severe Drawdown With Minimal Execution", "Drinking Water", 45.0, 45.0, 42.0, 12, 93.3, "2025-06-01", True),
+        ("BENCH-ANOM-02", "Extreme Outlier Cost Outlay (5x Normal)", "Education & Schools", 185.0, 120.0, 110.0, 40, 91.6, "2025-01-15", True),
+        ("BENCH-ANOM-03", "Overdue Delayed Road With Stalled Progress", "Roads & Bridges", 95.0, 90.0, 88.0, 30, 97.0, "2024-01-01", True),
+        ("BENCH-ANOM-04", "Disproportionate Single Drawdown Burst", "Community Infrastructure", 55.0, 55.0, 52.0, 18, 94.5, "2025-08-01", True)
+    ]
+
+    comparisons = []
+    agreed_count = 0
+    pt_tp, pt_tn, pt_fp, pt_fn = 0, 0, 0, 0
+    sk_tp, sk_tn, sk_fp, sk_fn = 0, 0, 0, 0
+
+    for cid, name, cat, sanc, rel, exp, phy, fin, exp_date, is_anom_ground_truth in benchmark_cases:
+        req = ProjectAnalysisRequest(
+            projectId=cid,
+            projectName=name,
+            categoryName=cat,
+            sanctionedAmount=sanc,
+            releasedAmount=rel,
+            expenditureAmount=exp,
+            physicalProgress=phy,
+            financialProgress=fin,
+            expectedCompletionDate=exp_date
+        )
+
+        # Scikit-learn inference
+        sk_res = engine.analyze_project(req)
+        sk_flagged = sk_res.riskScore >= 60
+
+        # PyTorch inference
+        vec, _ = engine.extract_feature_vector(req)
+        pt_res = pytorch_engine.infer(vec[0])
+        pt_flagged = pt_res.get("isAnomalous", False)
+
+        # Agreement check
+        agreed = (sk_flagged == pt_flagged)
+        if agreed:
+            agreed_count += 1
+
+        # Ground truth stats
+        if is_anom_ground_truth:
+            if sk_flagged: sk_tp += 1
+            else: sk_fn += 1
+            if pt_flagged: pt_tp += 1
+            else: pt_fn += 1
+        else:
+            if not sk_flagged: sk_tn += 1
+            else: sk_fp += 1
+            if not pt_flagged: pt_tn += 1
+            else: pt_fp += 1
+
+        comparisons.append({
+            "caseId": cid,
+            "projectName": name,
+            "category": cat,
+            "groundTruthAnomalous": is_anom_ground_truth,
+            "scikitLearn": {
+                "riskScore": sk_res.riskScore,
+                "riskLevel": sk_res.riskLevel,
+                "isFlagged": sk_flagged,
+                "rawIsoScore": sk_res.isolationForestRawScore
+            },
+            "pytorchAutoencoder": {
+                "reconstructionMse": pt_res.get("reconstructionMse", 0.0),
+                "thresholdMse": pt_res.get("thresholdMse", 0.2675),
+                "isAnomalous": pt_flagged,
+                "confidence": pt_res.get("reconstructionConfidence", 0.0),
+                "indicator": pt_res.get("indicator", "CONGRUENT_RECONSTRUCTION")
+            },
+            "modelsAgreed": agreed
+        })
+
+    total = len(benchmark_cases)
+    agreement_rate = (agreed_count / total * 100.0) if total > 0 else 0.0
+
+    return {
+        "totalBenchmarkCases": total,
+        "agreementCount": agreed_count,
+        "agreementRatePercent": round(agreement_rate, 1),
+        "scikitLearnMetrics": {
+            "modelName": "Scikit-Learn IsolationForest (Baseline)",
+            "status": "PRODUCTION_READY",
+            "accuracy": round((sk_tp + sk_tn) / total, 3),
+            "sensitivity": round(sk_tp / (sk_tp + sk_fn) if (sk_tp + sk_fn) > 0 else 0.0, 3),
+            "specificity": round(sk_tn / (sk_tn + sk_fp) if (sk_tn + sk_fp) > 0 else 0.0, 3),
+            "falsePositiveRate": round(sk_fp / (sk_fp + sk_tn) if (sk_fp + sk_tn) > 0 else 0.0, 3)
+        },
+        "pytorchAutoencoderMetrics": {
+            "modelName": "PyTorch Tabular Autoencoder",
+            "status": pytorch_engine.status,
+            "architecture": pytorch_engine.metadata.get("model_architecture", "10-32-16-4-16-32-10"),
+            "thresholdMse": pytorch_engine.threshold,
+            "accuracy": round((pt_tp + pt_tn) / total, 3),
+            "sensitivity": round(pt_tp / (pt_tp + pt_fn) if (pt_tp + pt_fn) > 0 else 0.0, 3),
+            "specificity": round(pt_tn / (pt_tn + pt_fp) if (pt_tn + pt_fp) > 0 else 0.0, 3),
+            "falsePositiveRate": round(pt_fp / (pt_fp + pt_tn) if (pt_fp + pt_tn) > 0 else 0.0, 3)
+        },
+        "comparativeAnalysis": comparisons,
+        "documentedLimitations": [
+            "Isolation Forest operates as the primary, statutory-calibrated baseline with explainable per-feature deviance attribution.",
+            "PyTorch Tabular Autoencoder provides deep multivariate reconstruction evaluation and is maintained as an experimental / validated benchmark.",
+            "Neither model asserts legal corruption or fraud; discrepancies represent statistical divergence for administrative physical inspection.",
+            "Model retraining is controlled and never triggered automatically on unverified or anomalous field reports."
+        ],
+        "evaluatedAt": datetime.datetime.now().isoformat()
+    }
+
 if __name__ == "__main__":
     report = run_pipeline_evaluation()
     print("=== MODEL EVALUATION REPORT ===")
@@ -167,3 +290,8 @@ if __name__ == "__main__":
     print("\nAnomalous Cases Scores:")
     for c in report["caseDetails"]["anomalousCasesScored"]:
         print(f"  - {c['id']}: Score={c['score']}, Tier={c['tier']}, TopFactor={c['topFactor']}")
+
+    print("\n=== DUAL MODEL COMPARISON ===")
+    comp = run_dual_model_comparison()
+    print(f"Agreement Rate: {comp['agreementRatePercent']}% ({comp['agreementCount']}/{comp['totalBenchmarkCases']})")
+

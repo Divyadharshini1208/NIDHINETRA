@@ -11,7 +11,6 @@ import com.mplads.monitoring.exception.ResourceNotFoundException;
 import com.mplads.monitoring.repository.*;
 import com.mplads.monitoring.security.UserPrincipal;
 import com.mplads.monitoring.service.FinancialService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -23,7 +22,6 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class FinancialServiceImpl implements FinancialService {
 
     private final ProjectRepository projectRepository;
@@ -32,6 +30,22 @@ public class FinancialServiceImpl implements FinancialService {
     private final ExpenditureRepository expenditureRepository;
     private final PaymentRepository paymentRepository;
     private final StateRepository stateRepository;
+
+    public FinancialServiceImpl(
+            ProjectRepository projectRepository,
+            SanctionRepository sanctionRepository,
+            FundReleaseRepository fundReleaseRepository,
+            ExpenditureRepository expenditureRepository,
+            PaymentRepository paymentRepository,
+            StateRepository stateRepository) {
+        this.projectRepository = projectRepository;
+        this.sanctionRepository = sanctionRepository;
+        this.fundReleaseRepository = fundReleaseRepository;
+        this.expenditureRepository = expenditureRepository;
+        this.paymentRepository = paymentRepository;
+        this.stateRepository = stateRepository;
+    }
+
 
     @Override
     @Transactional(readOnly = true)

@@ -7,7 +7,6 @@ import com.mplads.monitoring.service.MapService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,12 +18,16 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/map")
-@RequiredArgsConstructor
 @Tag(name = "GIS & Mapping", description = "GIS spatial endpoints for Leaflet map integration")
 @SecurityRequirement(name = "BearerAuth")
 public class MapController {
 
     private final MapService mapService;
+
+    public MapController(MapService mapService) {
+        this.mapService = mapService;
+    }
+
 
     @GetMapping("/projects")
     @Operation(summary = "Get geotagged projects for map rendering with role-scoped filters")

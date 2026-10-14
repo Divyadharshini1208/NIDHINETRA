@@ -33,4 +33,21 @@ export const aiMonitoringService = {
     });
     return res.data;
   },
+
+  getModelsStatus: async (): Promise<any> => {
+    const res = await fetchApi<ApiResponse<any>>('/api/ai/models/status');
+    return res.data;
+  },
+
+  compareModels: async (): Promise<any> => {
+    const res = await fetchApi<ApiResponse<any>>('/api/ai/models/compare');
+    return res.data;
+  },
+
+  analyzePyTorch: async (projectId: number | string): Promise<any> => {
+    const res = await fetchApi<ApiResponse<any>>(`/api/ai/analyze-pytorch/${projectId}`, {
+      method: 'POST',
+    });
+    return res.data;
+  },
 };

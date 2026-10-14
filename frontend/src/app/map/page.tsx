@@ -11,6 +11,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { RiskBadge } from '@/components/ui/RiskBadge';
 import { LoadingState } from '@/components/ui/StateViews';
 import { useAuth } from '@/context/AuthContext';
+import { useRequireAuth } from '@/utils/useRequireAuth';
 import { useToast } from '@/context/ToastContext';
 import { mapService } from '@/services/mapService';
 import { locationService } from '@/services/locationService';
@@ -43,7 +44,8 @@ const ProjectLeafletMap = dynamic(
 );
 
 export default function MapPage() {
-  const { user, isAuthenticated, demoLogin } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useRequireAuth();
+  const { demoLogin } = useAuth();
   const { error: toastError } = useToast();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -111,6 +113,14 @@ export default function MapPage() {
     setRiskLevel('ALL');
     setCategory('ALL');
   };
+
+  if (authLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <LoadingState message="Verifying official authorization credentials..." />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex bg-slate-100/70">

@@ -475,7 +475,7 @@ export interface PagedResponse<T> {
 
 export interface ApiResponse<T> {
   success: boolean;
-  message: string;
+  message?: string;
   data: T;
   timestamp?: string;
 }
@@ -510,4 +510,162 @@ export interface OfficialMpladsData {
   calamityWorksCount: number;
   calamityAmountCr: string;
   officialStates?: Array<{ stateId: number; stateName: string }>;
+  lastSuccessfulRefresh?: string;
+  sourceAvailable?: boolean;
+  cacheFreshnessSeconds?: number;
+  refreshLatencyMs?: number;
+}
+
+// Collector Inspection Queue (Feature 5)
+export interface InspectionQueueItem {
+  id: number | null;
+  projectId: number;
+  projectCode: string;
+  projectName: string;
+  categoryName: string;
+  districtName: string;
+  mpName: string;
+  sanctionedAmountLakhs: number;
+  releasedAmountLakhs: number;
+  expenditureAmountLakhs: number;
+  physicalProgressPct: number;
+  financialProgressPct: number;
+  progressMismatchGapPct: number;
+  delayDays: number;
+  riskScore: number;
+  riskLevel: string;
+  contributingReasons: string[];
+  recommendedAction: string;
+  inspectionStatus: string;
+  assignedOfficer: string | null;
+  deadline: string | null;
+  findingsOutcome: string | null;
+  priorityRank: string;
+}
+
+export interface WeeklyInspectionSummary {
+  districtId: number;
+  districtName: string;
+  weekStartDate: string;
+  totalAssignedInspections: number;
+  completedInspectionsCount: number;
+  pendingHighPriorityCount: number;
+  averageInspectionTurnaroundDays: number;
+  compliancePercentage: number;
+  inspectionsByOutcome?: Record<string, number>;
+}
+
+export interface AssignInspectionPayload {
+  projectId: number;
+  assignedOfficerName: string;
+  assignedOfficerDesignation?: string;
+  deadline: string;
+  remarks?: string;
+}
+
+export interface InspectionOutcomePayload {
+  assignmentId: number;
+  findingsOutcome: 'SATISFACTORY' | 'MINOR_ISSUES' | 'IRREGULARITY_FOUND' | 'SEVERE_MISMATCH' | 'ESCALATED';
+  findingsSummary: string;
+  recommendedAction?: string;
+  remarks?: string;
+}
+
+// Geofenced Photo Verification (Feature 6)
+export interface PhotoVerificationRecord {
+  id: number;
+  projectId: number;
+  projectCode: string;
+  fileName: string;
+  fileUrl: string;
+  fileHash: string;
+  projectApprovedLatitude?: number;
+  projectApprovedLongitude?: number;
+  extractedLatitude?: number;
+  extractedLongitude?: number;
+  distanceMeters?: number;
+  thresholdMeters?: number;
+  verificationStatus: 'LOCATION_MATCH' | 'LOCATION_MISMATCH' | 'GPS_METADATA_MISSING' | 'POSSIBLE_DUPLICATE_IMAGE' | 'MANUAL_VERIFICATION_REQUIRED' | string;
+  exifTimestamp?: string;
+  verificationNotes?: string;
+  verifiedBy?: string;
+  verifiedAt?: string;
+}
+
+// Implementing Agency Reliability Index (Feature 7)
+export interface AgencyReliabilityProfile {
+  agencyName: string;
+  totalProjects: number;
+  completedProjects: number;
+  activeProjects: number;
+  delayedProjects: number;
+  totalSanctionedCr: number;
+  totalExpenditureCr: number;
+  onTimeCompletionRatePct: number;
+  averageDelayDays: number;
+  budgetVariancePct: number;
+  compositeReliabilityScore: number;
+  performanceBand: 'A+' | 'A' | 'B' | 'C' | string;
+  bandDescription: string;
+  indicatorContributions: Record<string, number>;
+  dataCompletenessStatus: 'ROBUST' | 'MODERATE' | 'PRELIMINARY' | string;
+  statutoryNotice: string;
+}
+
+// Real-Time Risk Notification (Feature 8)
+export interface RiskNotificationItem {
+  id: number;
+  projectId?: number;
+  projectCode?: string;
+  projectName?: string;
+  title: string;
+  message: string;
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'INFO' | string;
+  triggerRule?: string;
+  stateId?: number;
+  districtId?: number;
+  isRead: boolean;
+  createdAt: string;
+}
+
+// What-If Fund Allocation Simulator (Feature 9)
+export interface SimulationAdjustment {
+  projectId: number;
+  adjustmentDeltaLakhs: number;
+}
+
+export interface SimulationEvaluatePayload {
+  title: string;
+  description?: string;
+  scopeType: 'NATIONAL' | 'STATE' | 'DISTRICT' | 'CONSTITUENCY';
+  scopeId?: number;
+  adjustments: SimulationAdjustment[];
+}
+
+export interface SimulationResult {
+  id?: number;
+  title: string;
+  description?: string;
+  scopeType: string;
+  scopeId?: number;
+  totalOriginalBudgetCr: number;
+  totalHypotheticalBudgetCr: number;
+  netReallocatedCr: number;
+  projectsAdjustedCount: number;
+  projectedBeneficiaryImpact: number;
+  projectedTimelineDeltaMonths: number;
+  isValidScenario: boolean;
+  validationMessages: string[];
+  simulatedProjectDeltas?: Array<{
+    projectId: number;
+    projectCode: string;
+    projectName: string;
+    sector: string;
+    originalSanctionedLakhs: number;
+    deltaLakhs: number;
+    hypotheticalSanctionedLakhs: number;
+    estimatedBeneficiaryShift: number;
+    estimatedTimelineMonthsShift: number;
+  }>;
+  statutoryNotice: string;
 }

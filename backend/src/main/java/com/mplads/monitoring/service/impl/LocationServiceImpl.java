@@ -8,7 +8,6 @@ import com.mplads.monitoring.repository.ConstituencyRepository;
 import com.mplads.monitoring.repository.DistrictRepository;
 import com.mplads.monitoring.repository.StateRepository;
 import com.mplads.monitoring.service.LocationService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,12 +15,21 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class LocationServiceImpl implements LocationService {
 
     private final StateRepository stateRepository;
     private final DistrictRepository districtRepository;
     private final ConstituencyRepository constituencyRepository;
+
+    public LocationServiceImpl(
+            StateRepository stateRepository,
+            DistrictRepository districtRepository,
+            ConstituencyRepository constituencyRepository) {
+        this.stateRepository = stateRepository;
+        this.districtRepository = districtRepository;
+        this.constituencyRepository = constituencyRepository;
+    }
+
 
     @Override
     @Transactional(readOnly = true)

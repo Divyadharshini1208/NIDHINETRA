@@ -9,7 +9,6 @@ import com.mplads.monitoring.service.InsightsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
@@ -24,13 +23,18 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/dashboard")
-@RequiredArgsConstructor
 @Tag(name = "Role Dashboards", description = "Role-based monitoring and decision support endpoints")
 @SecurityRequirement(name = "BearerAuth")
 public class DashboardController {
 
     private final InsightsService insightsService;
     private final AuditLogService auditLogService;
+
+    public DashboardController(InsightsService insightsService, AuditLogService auditLogService) {
+        this.insightsService = insightsService;
+        this.auditLogService = auditLogService;
+    }
+
 
     @GetMapping("/stats")
     @Operation(summary = "Get role-tailored dashboard statistics and scoped project queue")

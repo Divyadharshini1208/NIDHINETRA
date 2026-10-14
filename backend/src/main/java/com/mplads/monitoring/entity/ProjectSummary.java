@@ -35,15 +35,15 @@ public class ProjectSummary {
     @Column(name = "category", nullable = false, length = 100)
     private String category; // Drinking Water, Education, Healthcare, Roads & Bridges, Sanitation, Rural Infra
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "state_id", nullable = false)
     private State state;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "district_id", nullable = false)
     private District district;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "constituency_id")
     private Constituency constituency;
 

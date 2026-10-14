@@ -48,8 +48,16 @@ export default function LoginPage() {
 
     setIsSubmitting(true);
     try {
-      const redirectUrl = await login({ email, password });
-      router.push(redirectUrl);
+      const defaultUrl = await login({ email, password });
+      let targetUrl = defaultUrl;
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        const redirectParam = params.get('redirect');
+        if (redirectParam && redirectParam.startsWith('/')) {
+          targetUrl = redirectParam;
+        }
+      }
+      router.push(targetUrl);
     } catch (err: any) {
       setErrorMsg(err.message || 'Authentication failed. Please verify credentials.');
     } finally {

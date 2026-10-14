@@ -12,20 +12,23 @@ import { RiskBadge } from '@/components/ui/RiskBadge';
 import { Button } from '@/components/ui/Button';
 import { StatusPieChart } from '@/components/charts/StatusPieChart';
 import { TrendAreaChart } from '@/components/charts/TrendAreaChart';
-import { CategoryBarChart } from '@/components/charts/CategoryBarChart';
+import { LoadingState } from '@/components/ui/StateViews';
 import { useAuth } from '@/context/AuthContext';
+import { useRequireAuth } from '@/utils/useRequireAuth';
 import { useToast } from '@/context/ToastContext';
 import { projectService } from '@/services/projectService';
 import { aiMonitoringService } from '@/services/aiMonitoringService';
 import { alertService } from '@/services/alertService';
 import { Project, AiMonitoringSummary, RiskAlert } from '@/types';
 import { ReviewProjectModal } from '@/components/projects/ReviewProjectModal';
+import { CollectorInspectionSection } from '@/components/inspections/CollectorInspectionSection';
 import {
   Building2,
   AlertTriangle,
   IndianRupee,
   CheckCircle2,
   Clock,
+  ClipboardCheck,
   TrendingUp,
   MapPin,
   Eye,
@@ -53,7 +56,7 @@ import {
 } from 'recharts';
 
 export default function DistrictDashboardPage() {
-  const { user } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useRequireAuth(['ROLE_DISTRICT_AUTHORITY']);
   const { error: toastError, success } = useToast();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -61,6 +64,7 @@ export default function DistrictDashboardPage() {
   const [aiSummary, setAiSummary] = useState<AiMonitoringSummary | null>(null);
   const [districtAlerts, setDistrictAlerts] = useState<RiskAlert[]>([]);
   const [filterTab, setFilterTab] = useState<'ALL' | 'PENDING' | 'DELAYED' | 'ATTENTION' | 'COMPLETED'>('ALL');
+  const [dashboardTab, setDashboardTab] = useState<'REGISTER' | 'INSPECTION_QUEUE'>('REGISTER');
   const [selectedReviewProject, setSelectedReviewProject] = useState<Project | null>(null);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
 
@@ -130,6 +134,14 @@ export default function DistrictDashboardPage() {
     return true;
   });
 
+  if (authLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <LoadingState message="Verifying District Authority credentials..." />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex bg-slate-100/70">
       <Sidebar />
@@ -162,6 +174,14 @@ export default function DistrictDashboardPage() {
             </div>
 
             <div className="flex items-center gap-2">
+              <Button
+                variant={dashboardTab === 'INSPECTION_QUEUE' ? 'saffron' : 'outline'}
+                size="sm"
+                onClick={() => setDashboardTab(dashboardTab === 'INSPECTION_QUEUE' ? 'REGISTER' : 'INSPECTION_QUEUE')}
+                leftIcon={<ClipboardCheck className="w-3.5 h-3.5" />}
+              >
+                {dashboardTab === 'INSPECTION_QUEUE' ? 'Show Register' : 'Collector Inspection Queue'}
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -299,14 +319,47 @@ export default function DistrictDashboardPage() {
             </div>
           </div>
 
-          {/* DISTRICT OVERVIEW CHARTS */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Chart 1: Financial vs Physical Progress */}
-            <Card
-              title="Physical vs Financial Progress Comparison"
-              subtitle="Comparing on-ground execution certified against disbursed funds by sector"
-              headerIcon={<BarChart3 className="w-5 h-5 text-gov-navy-800" />}
+          {/* PRIMARY DASHBOARD VIEW SWITCHER */}
+          <div className="flex items-center gap-3 border-b border-slate-200 pb-3">
+            <button
+              onClick={() => setDashboardTab('REGISTER')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                dashboardTab === 'REGISTER'
+                  ? 'bg-gov-navy-900 text-white shadow-xs'
+                  : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+              }`}
             >
+              <Building2 className="w-4 h-4" />
+              District Works Register & Analytics
+            </button>
+            <button
+              onClick={() => setDashboardTab('INSPECTION_QUEUE')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                dashboardTab === 'INSPECTION_QUEUE'
+                  ? 'bg-gov-navy-900 text-white shadow-xs'
+                  : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              <ClipboardCheck className="w-4 h-4 text-gov-saffron" />
+              AI Collector Inspection Queue
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-gov-saffron/20 text-gov-saffron font-black border border-gov-saffron/30">
+                PRIORITIZED
+              </span>
+            </button>
+          </div>
+
+          {dashboardTab === 'INSPECTION_QUEUE' ? (
+            <CollectorInspectionSection districtId={user?.districtId} />
+          ) : (
+            <>
+              {/* DISTRICT OVERVIEW CHARTS */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Chart 1: Financial vs Physical Progress */}
+                <Card
+                  title="Physical vs Financial Progress Comparison"
+                  subtitle="Comparing on-ground execution certified against disbursed funds by sector"
+                  headerIcon={<BarChart3 className="w-5 h-5 text-gov-navy-800" />}
+                >
               <div className="w-full h-72">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={progressComparisonData} margin={{ top: 20, right: 20, left: 0, bottom: 20 }}>
@@ -507,7 +560,9 @@ export default function DistrictDashboardPage() {
               keyExtractor={(p: Project) => p.id}
             />
           </Card>
-        </main>
+        </>
+      )}
+    </main>
       </div>
 
       {/* DISTRICT AUTHORITY REVIEW MODAL */}

@@ -13,7 +13,6 @@ import com.mplads.monitoring.security.UserPrincipal;
 import com.mplads.monitoring.service.AuditLogService;
 import com.mplads.monitoring.service.ProjectService;
 import jakarta.persistence.criteria.Predicate;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -31,7 +30,6 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class ProjectServiceImpl implements ProjectService {
 
     private final ProjectRepository projectRepository;
@@ -42,6 +40,26 @@ public class ProjectServiceImpl implements ProjectService {
     private final ProjectCategoryRepository categoryRepository;
     private final SanctionRepository sanctionRepository;
     private final AuditLogService auditLogService;
+
+    public ProjectServiceImpl(
+            ProjectRepository projectRepository,
+            StateRepository stateRepository,
+            DistrictRepository districtRepository,
+            ConstituencyRepository constituencyRepository,
+            UserRepository userRepository,
+            ProjectCategoryRepository categoryRepository,
+            SanctionRepository sanctionRepository,
+            AuditLogService auditLogService) {
+        this.projectRepository = projectRepository;
+        this.stateRepository = stateRepository;
+        this.districtRepository = districtRepository;
+        this.constituencyRepository = constituencyRepository;
+        this.userRepository = userRepository;
+        this.categoryRepository = categoryRepository;
+        this.sanctionRepository = sanctionRepository;
+        this.auditLogService = auditLogService;
+    }
+
 
     @Override
     @Transactional(readOnly = true)

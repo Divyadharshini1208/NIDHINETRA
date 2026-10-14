@@ -5,7 +5,6 @@ import com.mplads.monitoring.dto.response.OfficialMpladsDataResponse;
 import com.mplads.monitoring.service.OfficialMpladsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -17,11 +16,15 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/public/official-data")
-@RequiredArgsConstructor
 @Tag(name = "Official MoSPI Data Integration", description = "Endpoints for live official MPLADS telemetry from mplads.mospi.gov.in")
 public class OfficialMpladsController {
 
     private final OfficialMpladsService officialMpladsService;
+
+    public OfficialMpladsController(OfficialMpladsService officialMpladsService) {
+        this.officialMpladsService = officialMpladsService;
+    }
+
 
     @GetMapping("/summary")
     @Operation(summary = "Get official macro telemetry directly from MoSPI eSAKSHI portal")

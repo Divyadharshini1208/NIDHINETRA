@@ -20,7 +20,10 @@ import java.time.LocalDateTime;
     @Index(name = "idx_projects_risk_level", columnList = "risk_level"),
     @Index(name = "idx_projects_start_date", columnList = "start_date"),
     @Index(name = "idx_projects_expected_comp_date", columnList = "expected_completion_date"),
-    @Index(name = "idx_projects_status_risk", columnList = "status, risk_level")
+    @Index(name = "idx_projects_status_risk", columnList = "status, risk_level"),
+    @Index(name = "idx_projects_state_status", columnList = "state_id, status"),
+    @Index(name = "idx_projects_dist_risk", columnList = "district_id, risk_level"),
+    @Index(name = "idx_projects_agency", columnList = "implementing_agency")
 })
 @Getter
 @Setter
@@ -42,19 +45,19 @@ public class Project {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "state_id", nullable = false)
     private State state;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "district_id", nullable = false)
     private District district;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "constituency_id")
     private Constituency constituency;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "mp_user_id")
     private User mpUser;
 
@@ -64,7 +67,7 @@ public class Project {
     @Column(name = "implementing_agency", length = 200)
     private String implementingAgency;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
     private ProjectCategory category;
 

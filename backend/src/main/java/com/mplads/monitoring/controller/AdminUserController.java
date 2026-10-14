@@ -10,7 +10,6 @@ import com.mplads.monitoring.service.AuditLogService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -27,7 +26,6 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/admin/users")
-@RequiredArgsConstructor
 @Tag(name = "Admin User Management", description = "Central administrative user governance and clearance")
 @SecurityRequirement(name = "BearerAuth")
 @PreAuthorize("hasRole('MINISTRY_ADMIN')")
@@ -35,6 +33,12 @@ public class AdminUserController {
 
     private final UserRepository userRepository;
     private final AuditLogService auditLogService;
+
+    public AdminUserController(UserRepository userRepository, AuditLogService auditLogService) {
+        this.userRepository = userRepository;
+        this.auditLogService = auditLogService;
+    }
+
 
     private Map<String, Object> calculateUserStatistics() {
         Map<String, Object> stats = new HashMap<>();

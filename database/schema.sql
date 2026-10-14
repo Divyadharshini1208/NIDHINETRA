@@ -286,3 +286,119 @@ CREATE TABLE IF NOT EXISTS data_import_records (
     status VARCHAR(50) NOT NULL DEFAULT 'COMPLETED',
     created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 19. Collector Inspection Assignments Table
+CREATE TABLE IF NOT EXISTS inspection_assignments (
+    id BIGSERIAL PRIMARY KEY,
+    project_id BIGINT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    district_id BIGINT NOT NULL REFERENCES districts(id) ON DELETE CASCADE,
+    assigned_officer_name VARCHAR(150) NOT NULL,
+    assigned_officer_designation VARCHAR(100),
+    assigned_by VARCHAR(150) NOT NULL,
+    deadline DATE,
+    status VARCHAR(50) NOT NULL DEFAULT 'PENDING_INSPECTION',
+    priority_score DOUBLE PRECISION,
+    priority_rank VARCHAR(20),
+    findings_outcome VARCHAR(50),
+    findings_summary TEXT,
+    recommended_action VARCHAR(500),
+    remarks VARCHAR(500),
+    completed_at TIMESTAMP WITHOUT TIME ZONE,
+    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITHOUT TIME ZONE
+);
+CREATE INDEX IF NOT EXISTS idx_insp_project_id ON inspection_assignments(project_id);
+CREATE INDEX IF NOT EXISTS idx_insp_district_id ON inspection_assignments(district_id);
+CREATE INDEX IF NOT EXISTS idx_insp_status ON inspection_assignments(status);
+CREATE INDEX IF NOT EXISTS idx_insp_priority ON inspection_assignments(priority_score);
+
+-- 20. Geofenced Photo Verifications Table
+CREATE TABLE IF NOT EXISTS photo_verifications (
+    id BIGSERIAL PRIMARY KEY,
+    project_id BIGINT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    file_name VARCHAR(255) NOT NULL,
+    file_url VARCHAR(500),
+    file_hash VARCHAR(64),
+    extracted_latitude DOUBLE PRECISION,
+    extracted_longitude DOUBLE PRECISION,
+    distance_meters DOUBLE PRECISION,
+    threshold_meters DOUBLE PRECISION DEFAULT 500.0,
+    verification_status VARCHAR(50) NOT NULL,
+    exif_timestamp TIMESTAMP WITHOUT TIME ZONE,
+    verification_notes VARCHAR(1000),
+    verified_by VARCHAR(150),
+    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_photo_project_id ON photo_verifications(project_id);
+CREATE INDEX IF NOT EXISTS idx_photo_file_hash ON photo_verifications(file_hash);
+CREATE INDEX IF NOT EXISTS idx_photo_status ON photo_verifications(verification_status);
+
+-- 21. Real-Time Risk Notifications Table
+CREATE TABLE IF NOT EXISTS risk_notifications (
+    id BIGSERIAL PRIMARY KEY,
+    project_id BIGINT,
+    project_code VARCHAR(60),
+    project_name VARCHAR(300),
+    title VARCHAR(200) NOT NULL,
+    message TEXT NOT NULL,
+    severity VARCHAR(30) NOT NULL,
+    trigger_rule VARCHAR(100),
+    target_role VARCHAR(50),
+    state_id BIGINT REFERENCES states(id) ON DELETE SET NULL,
+    district_id BIGINT REFERENCES districts(id) ON DELETE SET NULL,
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_notif_project_id ON risk_notifications(project_id);
+CREATE INDEX IF NOT EXISTS idx_notif_district_id ON risk_notifications(district_id);
+CREATE INDEX IF NOT EXISTS idx_notif_state_id ON risk_notifications(state_id);
+CREATE INDEX IF NOT EXISTS idx_notif_is_read ON risk_notifications(is_read);
+CREATE INDEX IF NOT EXISTS idx_notif_created_at ON risk_notifications(created_at);
+
+-- 22. What-If Fund Simulation Scenarios Table
+CREATE TABLE IF NOT EXISTS simulation_scenarios (
+    id BIGSERIAL PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    description TEXT,
+    scope_type VARCHAR(50) NOT NULL,
+    scope_id BIGINT,
+    total_original_budget_cr DOUBLE PRECISION,
+    total_hypothetical_budget_cr DOUBLE PRECISION,
+    reallocated_amount_cr DOUBLE PRECISION,
+    projects_adjusted_count INTEGER,
+    projected_beneficiary_impact INTEGER,
+    projected_timeline_delta_months DOUBLE PRECISION,
+    scenario_payload_json TEXT NOT NULL,
+    metrics_summary_json TEXT,
+    created_by_user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    created_by_name VARCHAR(150),
+    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_sim_created_by ON simulation_scenarios(created_by_user_id);
+CREATE INDEX IF NOT EXISTS idx_sim_scope ON simulation_scenarios(scope_type, scope_id);
+
+-- 23. Projects Summary Table (Lightweight Reporting Cache)
+CREATE TABLE IF NOT EXISTS projects_summary (
+    id BIGSERIAL PRIMARY KEY,
+    project_code VARCHAR(50) UNIQUE NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    category VARCHAR(100) NOT NULL,
+    state_id BIGINT NOT NULL REFERENCES states(id),
+    district_id BIGINT NOT NULL REFERENCES districts(id),
+    constituency_id BIGINT REFERENCES constituencies(id),
+    implementing_agency VARCHAR(150),
+    sanctioned_amount_lakhs DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+    expenditure_amount_lakhs DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+    physical_progress_percent INTEGER NOT NULL DEFAULT 0,
+    status VARCHAR(50) NOT NULL DEFAULT 'ONGOING',
+    risk_level VARCHAR(50) DEFAULT 'LOW',
+    risk_reason VARCHAR(500),
+    sanction_date DATE,
+    expected_completion_date DATE,
+    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITHOUT TIME ZONE
+);
+CREATE INDEX IF NOT EXISTS idx_project_state ON projects_summary(state_id);
+CREATE INDEX IF NOT EXISTS idx_project_district ON projects_summary(district_id);
+CREATE INDEX IF NOT EXISTS idx_project_status ON projects_summary(status);
+CREATE INDEX IF NOT EXISTS idx_project_risk ON projects_summary(risk_level);

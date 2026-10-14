@@ -12,8 +12,9 @@ import { RiskBadge } from '@/components/ui/RiskBadge';
 import { Button } from '@/components/ui/Button';
 import { StatusPieChart } from '@/components/charts/StatusPieChart';
 import { TrendAreaChart } from '@/components/charts/TrendAreaChart';
-import { CategoryBarChart } from '@/components/charts/CategoryBarChart';
+import { LoadingState } from '@/components/ui/StateViews';
 import { useAuth } from '@/context/AuthContext';
+import { useRequireAuth } from '@/utils/useRequireAuth';
 import { useToast } from '@/context/ToastContext';
 import { projectService } from '@/services/projectService';
 import { aiMonitoringService } from '@/services/aiMonitoringService';
@@ -53,7 +54,7 @@ import {
 } from 'recharts';
 
 export default function StateDashboardPage() {
-  const { user } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useRequireAuth(['ROLE_STATE_NODAL_AUTHORITY']);
   const { error: toastError, success } = useToast();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -127,6 +128,14 @@ export default function StateDashboardPage() {
     { category: 'Public Health', count: Math.round(totalProjects * 0.12), amountCr: 58.0 },
     { category: 'Community Halls', count: Math.round(totalProjects * 0.06), amountCr: 27.0 },
   ];
+
+  if (authLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <LoadingState message="Verifying State Nodal Authority credentials..." />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex bg-slate-100/70">

@@ -29,16 +29,34 @@ export function Header() {
   const pathname = usePathname();
   const { user, isAuthenticated, logout, getRoleDashboardUrl } = useAuth();
 
-  const navLinks = [
+  const roleDashboardUrl = user ? getRoleDashboardUrl(user.role) : '/dashboard';
+  const roleDashboardName = user ? (
+    user.role === 'ROLE_MINISTRY_ADMIN' ? 'Ministry Dashboard' :
+    user.role === 'ROLE_STATE_NODAL_AUTHORITY' ? 'State Dashboard' :
+    user.role === 'ROLE_DISTRICT_AUTHORITY' ? 'District Dashboard' :
+    user.role === 'ROLE_MP' ? 'MP Dashboard' : 'Dashboard'
+  ) : 'Dashboard';
+
+  // 1. Before Login — Public Visitors
+  const publicNavLinks = [
     { name: 'Home', href: '/', icon: Home },
     { name: 'Insights', href: '/insights', icon: BarChart3 },
-    { name: 'Projects', href: '/projects', icon: FileText },
+    { name: 'About', href: '/about', icon: BookOpen },
+  ];
+
+  // 2. After Login — Authenticated Officials
+  const authenticatedNavLinks = [
+    { name: 'Home', href: '/', icon: Home },
+    { name: 'Insights', href: '/insights', icon: BarChart3 },
+    { name: 'About', href: '/about', icon: BookOpen },
     { name: 'GIS Map', href: '/map', icon: Globe },
     { name: 'AI Monitoring', href: '/ai-monitoring', icon: Sparkles },
     { name: 'Risk Alerts', href: '/alerts', icon: AlertTriangle },
     { name: 'Reports', href: '/reports', icon: BookOpen },
-    { name: 'About', href: '/about', icon: BookOpen },
+    { name: roleDashboardName, href: roleDashboardUrl, icon: LayoutDashboard },
   ];
+
+  const navLinks = isAuthenticated ? authenticatedNavLinks : publicNavLinks;
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
@@ -75,7 +93,7 @@ export function Header() {
             />
           </Link>
 
-          {/* Center: Desktop Navigation */}
+          {/* Center: Desktop Navigation (Public or Operational based on auth) */}
           <nav className="hidden lg:flex items-center space-x-1">
             {navLinks.map((link) => {
               const Icon = link.icon;
@@ -100,7 +118,7 @@ export function Header() {
           {/* Right: Authenticated User Pill OR Sign In */}
           <div className="hidden sm:flex items-center space-x-2 shrink-0">
             {isAuthenticated && user ? (
-              <div className="flex items-center space-x-2 bg-slate-50 border border-slate-200 rounded-lg p-1 pl-2">
+              <div className="flex items-center space-x-2 bg-slate-50 border border-slate-200 rounded-lg p-1 pl-2.5">
                 <div className="flex flex-col text-right">
                   <span className="text-[11px] font-bold text-gov-navy-900 leading-none truncate max-w-[130px]">
                     {user.fullName}
@@ -109,20 +127,14 @@ export function Header() {
                     {getRoleShortBadge(user.role)}
                   </span>
                 </div>
-                <Link
-                  href={getRoleDashboardUrl(user.role)}
-                  className="inline-flex items-center px-2 py-1 text-xs font-bold text-white bg-gov-navy-800 hover:bg-gov-navy-900 rounded shadow-2xs transition"
-                >
-                  <LayoutDashboard className="w-3 h-3 mr-1" />
-                  Dashboard
-                </Link>
                 <button
                   onClick={logout}
                   title="Sign Out"
-                  className="p-1 text-slate-400 hover:text-red-600 hover:bg-white rounded transition"
+                  className="inline-flex items-center px-2 py-1 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded transition"
                   aria-label="Sign out"
                 >
-                  <LogOut className="w-3.5 h-3.5" />
+                  <LogOut className="w-3.5 h-3.5 mr-1" />
+                  <span>Logout</span>
                 </button>
               </div>
             ) : (

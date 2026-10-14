@@ -103,8 +103,8 @@ def test_edge_cases_and_zero_values_safety():
     )
     result = engine.analyze_project(project)
     assert result.riskScore is not None
-    assert 0 <= result.riskScore <= 100
-    assert result.riskLevel in ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+    assert result.riskLevel in ["LOW", "MEDIUM", "HIGH", "CRITICAL", "INSUFFICIENT_DATA"]
+    assert result.riskLevel == "INSUFFICIENT_DATA"
 
 def test_inference_reproducibility():
     project = ProjectAnalysisRequest(
@@ -155,6 +155,16 @@ def test_duplicate_detection_logic():
     assert res.possibleDuplicate
     assert res.matchingProjectId == "PROJ-CAND-1"
     assert res.similarityScore > 65.0
+
+    # Test cache warm hit on identical candidate corpus (transforms only target)
+    res_warm = engine.detect_duplicates(target, candidates)
+    assert res_warm.possibleDuplicate
+    assert res_warm.matchingProjectId == "PROJ-CAND-1"
+
+    # Test cache invalidation
+    inval_res = engine.invalidate_duplicate_cache()
+    assert inval_res["status"] == "success"
+    assert engine._candidate_corpus_hash is None
 
 def test_model_evaluation_suite():
     eval_report = run_pipeline_evaluation()

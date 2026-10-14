@@ -9,6 +9,7 @@ import { Table } from '@/components/ui/Table';
 import { Button } from '@/components/ui/Button';
 import { LoadingState } from '@/components/ui/StateViews';
 import { useAuth } from '@/context/AuthContext';
+import { useRequireAuth } from '@/utils/useRequireAuth';
 import { useToast } from '@/context/ToastContext';
 import { reportService } from '@/services/reportService';
 import { locationService } from '@/services/locationService';
@@ -38,7 +39,7 @@ const REPORT_CATEGORIES = [
 ];
 
 export default function ReportsPage() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useRequireAuth();
   const { success, error: toastError } = useToast();
 
   const [selectedCategory, setSelectedCategory] = useState('PROJECT_SUMMARY');
@@ -114,6 +115,14 @@ export default function ReportsPage() {
   const handlePrint = () => {
     window.print();
   };
+
+  if (authLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <LoadingState message="Verifying official authorization credentials..." />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-slate-100 font-sans">

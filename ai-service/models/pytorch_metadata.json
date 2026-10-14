@@ -1,0 +1,27 @@
+{
+  "model_architecture": "TabularAutoencoder (10 -> 32 -> 16 -> 4 -> 16 -> 32 -> 10)",
+  "framework": "PyTorch",
+  "torch_version": "2.14.1+cpu",
+  "device": "cpu",
+  "input_dimension": 10,
+  "latent_dimension": 4,
+  "feature_columns": [
+    "sanctioned_amount",
+    "drawdown_ratio",
+    "expenditure_velocity",
+    "physical_progress",
+    "financial_progress",
+    "progress_mismatch_gap",
+    "expenditure_per_progress_pct",
+    "milestone_delay_days",
+    "category_cost_deviation_pct",
+    "payment_concentration_index"
+  ],
+  "training_samples": 800,
+  "validation_samples": 200,
+  "epochs": 40,
+  "validation_mean_mse": 0.09857,
+  "reconstruction_threshold_mse": 0.2675,
+  "status": "VALIDATED",
+  "statutory_role": "Experimental deep-learning anomaly benchmark evaluated against IsolationForest baseline."
+}

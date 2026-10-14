@@ -16,10 +16,15 @@ from schemas.models import (
     DuplicateDetectionRequest,
     DuplicateDetectionResponse,
     NlQueryRequest,
-    NlQueryResponse
+    NlQueryResponse,
+    PyTorchInferenceResult,
+    ModelStatusResponse,
+    ModelComparisonBenchmark
 )
 from pipeline.anomaly_detector import engine
-from pipeline.model_evaluator import run_pipeline_evaluation
+from pipeline.data_processor import FEATURE_COLUMNS
+from pipeline.pytorch_autoencoder import pytorch_engine
+from pipeline.model_evaluator import run_pipeline_evaluation, run_dual_model_comparison
 from pipeline.nl_analytics import nl_engine
 
 logging.basicConfig(level=logging.INFO)
@@ -27,7 +32,7 @@ logger = logging.getLogger("mplads-ai-service")
 
 app = FastAPI(
     title="MPLADS AI Monitoring & Risk Telemetry Service",
-    description="Explainable anomaly detection, cost anomaly screening, milestone delay classification, duplicate detection, and grounded natural-language analytics.",
+    description="Explainable anomaly detection, Scikit-Learn IsolationForest baseline, PyTorch Tabular Autoencoder, milestone delay classification, duplicate detection, and grounded natural-language analytics.",
     version="2.1.0"
 )
 
@@ -45,10 +50,23 @@ def health_check():
         "status": "UP",
         "service": "MPLADS AI Microservice",
         "version": "2.1.0",
-        "ml_engine": "Scikit-Learn IsolationForest (150 Estimators, RobustScaler) & TF-IDF Vectorizer",
+        "models": {
+            "isolation_forest": {
+                "engine": "Scikit-Learn IsolationForest (150 Estimators, RobustScaler)",
+                "status": "PRODUCTION_READY",
+                "features": len(FEATURE_COLUMNS)
+            },
+            "pytorch_autoencoder": {
+                "engine": "PyTorch Tabular Autoencoder (10-32-16-4-16-32-10)",
+                "status": pytorch_engine.status,
+                "device": str(pytorch_engine.device),
+                "thresholdMse": pytorch_engine.threshold
+            }
+        },
         "pipeline_metadata": engine.metadata,
         "capabilities": [
-            "Explainable Anomaly Detection",
+            "Explainable Anomaly Detection (Scikit-Learn IsolationForest)",
+            "Deep Tabular Reconstruction Network (PyTorch Autoencoder)",
             "Multi-Feature Diagnostic Attribution",
             "Potential Cost Anomaly Screening",
             "Progress vs Expenditure Divergence Analysis",
@@ -144,6 +162,18 @@ def detect_duplicates_endpoint(request: DuplicateDetectionRequest):
         logger.error(f"Error during duplicate detection: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Duplicate detection error: {str(e)}")
 
+@app.post("/invalidate-duplicate-cache")
+def invalidate_duplicate_cache_endpoint():
+    """
+    Invalidates the cached TF-IDF vectorizer and document-term matrix.
+    Called when projects are created, updated, or re-indexed.
+    """
+    try:
+        return engine.invalidate_duplicate_cache()
+    except Exception as e:
+        logger.error(f"Error invalidating duplicate cache: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Cache invalidation error: {str(e)}")
+
 @app.post("/evaluate/pipeline")
 def evaluate_pipeline_endpoint():
     """
@@ -183,6 +213,67 @@ def grounded_analytics_query(request: NlQueryRequest):
     except Exception as e:
         logger.error(f"Error during NL analytics query: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
+
+@app.get("/models/status", response_model=ModelStatusResponse)
+def get_models_status_endpoint():
+    """
+    Expose readiness, framework, threshold, and parameter metadata for both
+    Scikit-Learn IsolationForest baseline and PyTorch Tabular Autoencoder.
+    """
+    try:
+        return ModelStatusResponse(
+            serviceStatus="UP",
+            isolationForest={
+                "modelName": "Scikit-Learn IsolationForest",
+                "framework": "Scikit-Learn",
+                "status": "PRODUCTION_READY",
+                "contamination": 0.12,
+                "nEstimators": 150,
+                "scaler": "RobustScaler",
+                "role": "Primary statutory risk classification and continuous scoring baseline."
+            },
+            pytorchAutoencoder={
+                "modelName": "PyTorch Tabular Autoencoder",
+                "framework": "PyTorch",
+                "status": pytorch_engine.status,
+                "architecture": pytorch_engine.metadata.get("model_architecture", "10-32-16-4-16-32-10"),
+                "device": str(pytorch_engine.device),
+                "reconstructionThresholdMse": pytorch_engine.threshold,
+                "validationMeanMse": pytorch_engine.metadata.get("validation_mean_mse", 0.098),
+                "role": "Experimental deep-learning reconstruction benchmark evaluated against baseline."
+            },
+            featureSchema=FEATURE_COLUMNS,
+            statutoryNotice="Dual-Model Architecture: Scikit-Learn baseline deployed for statutory scoring; PyTorch autoencoder operated as deep reconstruction benchmark."
+        )
+    except Exception as e:
+        logger.error(f"Error retrieving model status: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Model status error: {str(e)}")
+
+@app.post("/analyze/pytorch", response_model=PyTorchInferenceResult)
+def analyze_pytorch_endpoint(project: ProjectAnalysisRequest):
+    """
+    Standalone PyTorch Tabular Autoencoder inference endpoint.
+    Converts inputs into PyTorch tensors and returns reconstruction MSE and anomaly indicator.
+    """
+    try:
+        vec, _ = engine.extract_feature_vector(project)
+        res = pytorch_engine.infer(vec[0])
+        return PyTorchInferenceResult(**res)
+    except Exception as e:
+        logger.error(f"PyTorch inference error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"PyTorch inference error: {str(e)}")
+
+@app.post("/models/compare", response_model=ModelComparisonBenchmark)
+def compare_models_endpoint():
+    """
+    Runs dual-model comparative benchmark on identical reference cases.
+    Computes concordance/agreement rate, per-case breakdown, and unsupervised metrics.
+    """
+    try:
+        return run_dual_model_comparison()
+    except Exception as e:
+        logger.error(f"Error during model comparison: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Model comparison error: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

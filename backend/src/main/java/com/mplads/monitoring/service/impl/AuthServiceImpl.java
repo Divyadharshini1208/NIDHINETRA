@@ -13,7 +13,6 @@ import com.mplads.monitoring.security.JwtTokenProvider;
 import com.mplads.monitoring.security.UserPrincipal;
 import com.mplads.monitoring.service.AuditLogService;
 import com.mplads.monitoring.service.AuthService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -25,7 +24,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
         private final AuthenticationManager authenticationManager;
@@ -38,6 +36,30 @@ public class AuthServiceImpl implements AuthService {
         private final JwtTokenProvider tokenProvider;
         private final UserMapper userMapper;
         private final AuditLogService auditLogService;
+
+    public AuthServiceImpl(
+            AuthenticationManager authenticationManager,
+            UserRepository userRepository,
+            RoleRepository roleRepository,
+            StateRepository stateRepository,
+            DistrictRepository districtRepository,
+            ConstituencyRepository constituencyRepository,
+            PasswordEncoder passwordEncoder,
+            JwtTokenProvider tokenProvider,
+            UserMapper userMapper,
+            AuditLogService auditLogService) {
+        this.authenticationManager = authenticationManager;
+        this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
+        this.stateRepository = stateRepository;
+        this.districtRepository = districtRepository;
+        this.constituencyRepository = constituencyRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.tokenProvider = tokenProvider;
+        this.userMapper = userMapper;
+        this.auditLogService = auditLogService;
+    }
+
 
         @Override
         @Transactional

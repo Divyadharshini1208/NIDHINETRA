@@ -6,7 +6,6 @@ import com.mplads.monitoring.entity.*;
 import com.mplads.monitoring.repository.*;
 import com.mplads.monitoring.security.UserPrincipal;
 import com.mplads.monitoring.service.InsightsService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,12 +13,21 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class InsightsServiceImpl implements InsightsService {
 
     private final ProjectRepository projectRepository;
     private final StateRepository stateRepository;
     private final AuditLogRepository auditLogRepository;
+
+    public InsightsServiceImpl(
+            ProjectRepository projectRepository,
+            StateRepository stateRepository,
+            AuditLogRepository auditLogRepository) {
+        this.projectRepository = projectRepository;
+        this.stateRepository = stateRepository;
+        this.auditLogRepository = auditLogRepository;
+    }
+
 
     @Override
     @Transactional(readOnly = true)

@@ -9,7 +9,6 @@ import com.mplads.monitoring.service.RiskAlertService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -20,12 +19,16 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/alerts")
-@RequiredArgsConstructor
 @Tag(name = "Risk Alerts & Investigation", description = "Endpoints for anomaly alerts and multi-tier investigation workflow")
 @SecurityRequirement(name = "BearerAuth")
 public class AlertController {
 
     private final RiskAlertService riskAlertService;
+
+    public AlertController(RiskAlertService riskAlertService) {
+        this.riskAlertService = riskAlertService;
+    }
+
 
     @GetMapping
     @Operation(summary = "Get paginated risk alerts with role-based filtering")

@@ -10,7 +10,6 @@ import com.mplads.monitoring.service.AiClientService;
 import com.mplads.monitoring.service.RiskAlertService;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Predicate;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -28,7 +27,6 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class RiskAlertServiceImpl implements RiskAlertService {
 
     private final RiskAlertRepository riskAlertRepository;
@@ -38,6 +36,24 @@ public class RiskAlertServiceImpl implements RiskAlertService {
     private final AuditLogRepository auditLogRepository;
     private final AiClientService aiClientService;
     private final ObjectMapper objectMapper;
+
+    public RiskAlertServiceImpl(
+            RiskAlertRepository riskAlertRepository,
+            ProjectRepository projectRepository,
+            InvestigationRepository investigationRepository,
+            InvestigationNoteRepository investigationNoteRepository,
+            AuditLogRepository auditLogRepository,
+            AiClientService aiClientService,
+            ObjectMapper objectMapper) {
+        this.riskAlertRepository = riskAlertRepository;
+        this.projectRepository = projectRepository;
+        this.investigationRepository = investigationRepository;
+        this.investigationNoteRepository = investigationNoteRepository;
+        this.auditLogRepository = auditLogRepository;
+        this.aiClientService = aiClientService;
+        this.objectMapper = objectMapper;
+    }
+
 
     @Override
     @Transactional(readOnly = true)

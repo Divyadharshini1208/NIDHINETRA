@@ -3,7 +3,6 @@ package com.mplads.monitoring.service.impl;
 import com.mplads.monitoring.entity.AuditLog;
 import com.mplads.monitoring.repository.AuditLogRepository;
 import com.mplads.monitoring.service.AuditLogService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -14,10 +13,14 @@ import java.util.List;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class AuditLogServiceImpl implements AuditLogService {
 
     private final AuditLogRepository auditLogRepository;
+
+    public AuditLogServiceImpl(AuditLogRepository auditLogRepository) {
+        this.auditLogRepository = auditLogRepository;
+    }
+
 
     @Override
     @Transactional

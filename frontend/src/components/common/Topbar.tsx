@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useSidebar } from '@/context/SidebarContext';
 import { LogOut, Bell, ChevronRight, LayoutDashboard, Globe, Menu } from 'lucide-react';
+import { NotificationBell } from './NotificationBell';
 
 interface TopbarProps {
   title: string;
@@ -61,7 +62,9 @@ export function Topbar({ title, scopeBadge }: TopbarProps) {
 
       {/* Right: User Profile & Actions */}
       <div className="flex items-center space-x-2 shrink-0">
-        <div className="flex items-center space-x-2 pl-2">
+        <NotificationBell />
+
+        <div className="flex items-center space-x-2 pl-2 border-l border-slate-200">
           <div className="w-6.5 h-6.5 rounded-full bg-gov-navy-800 text-white flex items-center justify-center font-bold text-[10px]">
             {user?.fullName?.charAt(0) || 'U'}
           </div>

@@ -80,6 +80,33 @@ class ContributingFeature(BaseModel):
     impactSeverity: str # HIGH, MEDIUM, LOW
     description: str
 
+class PyTorchInferenceResult(BaseModel):
+    modelName: str = "PyTorch Tabular Autoencoder"
+    modelVersion: str = "2.1.0-torch"
+    modelStatus: str = "VALIDATED"
+    device: str = "cpu"
+    reconstructionMse: float = 0.0
+    thresholdMse: float = 0.2675
+    isAnomalous: bool = False
+    reconstructionConfidence: float = 0.0
+    indicator: str = "CONGRUENT_RECONSTRUCTION"
+    explanation: str = ""
+
+class FundUtilizationSummary(BaseModel):
+    sanctionedAmountLakhs: float = 0.0
+    releasedAmountLakhs: float = 0.0
+    expenditureAmountLakhs: float = 0.0
+    unspentBalanceLakhs: float = 0.0
+    fundUtilizationPct: float = 0.0
+    drawdownRatioPct: float = 0.0
+    physicalProgressPct: float = 0.0
+    financialProgressPct: float = 0.0
+    progressDivergenceGap: float = 0.0
+    expenditurePerProgressPoint: float = 0.0
+    dataCompletenessStatus: str = "ROBUST"  # ROBUST, MODERATE, INSUFFICIENT_DATA
+    dataQualityWarnings: List[str] = []
+    isValidForMlInference: bool = True
+
 class ProjectAnalysisResponse(BaseModel):
     projectId: Optional[str] = None
     riskScore: int = Field(description="Normalized integer 0-100")
@@ -91,6 +118,8 @@ class ProjectAnalysisResponse(BaseModel):
     contributingFeatures: List[ContributingFeature] = []
     recommendations: List[str] = []
     analyzedAt: str
+    pytorchEvaluation: Optional[PyTorchInferenceResult] = None
+    fundUtilization: Optional[FundUtilizationSummary] = None
     modelMetadata: Optional[Dict[str, Any]] = None
     statutoryNotice: str = "Statutory Decision Support: Flagged indicators represent statistical variations requiring human review; NOT proof of fraud."
 
@@ -140,3 +169,20 @@ class NlQueryResponse(BaseModel):
     evidenceSources: List[str] = []
     suggestedActions: List[str] = []
     statutoryNotice: str = "Deterministic Grounded Analytics: Output generated strictly from verified database records without speculative generation."
+
+class ModelStatusResponse(BaseModel):
+    serviceStatus: str = "UP"
+    isolationForest: Dict[str, Any]
+    pytorchAutoencoder: Dict[str, Any]
+    featureSchema: List[str]
+    statutoryNotice: str
+
+class ModelComparisonBenchmark(BaseModel):
+    totalBenchmarkCases: int
+    agreementCount: int
+    agreementRatePercent: float
+    scikitLearnMetrics: Dict[str, Any]
+    pytorchAutoencoderMetrics: Dict[str, Any]
+    comparativeAnalysis: List[Dict[str, Any]]
+    documentedLimitations: List[str]
+    evaluatedAt: str

@@ -15,7 +15,9 @@ import { StateBarChart } from '@/components/charts/StateBarChart';
 import { StatusPieChart } from '@/components/charts/StatusPieChart';
 import { TrendAreaChart } from '@/components/charts/TrendAreaChart';
 import { CategoryBarChart } from '@/components/charts/CategoryBarChart';
+import { LoadingState } from '@/components/ui/StateViews';
 import { useAuth } from '@/context/AuthContext';
+import { useRequireAuth } from '@/utils/useRequireAuth';
 import { useToast } from '@/context/ToastContext';
 import { projectService } from '@/services/projectService';
 import { financialService } from '@/services/financialService';
@@ -51,7 +53,7 @@ import {
 } from 'lucide-react';
 
 export default function MinistryDashboardPage() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useRequireAuth(['ROLE_MINISTRY_ADMIN']);
   const { success, error: toastError, info } = useToast();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -123,6 +125,14 @@ export default function MinistryDashboardPage() {
   const totalReleasedCr = financials?.totalReleasedCr || 4120.0;
   const totalExpenditureCr = financials?.totalExpenditureCr || insights?.totalExpenditureCr || 4120.25;
   const utilizationPercent = financials?.overallUtilizationPercent || insights?.fundUtilizationRate || 84.8;
+
+  if (authLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <LoadingState message="Verifying Ministry Administrator credentials..." />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex bg-slate-100/70">

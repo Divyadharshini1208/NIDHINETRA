@@ -44,10 +44,12 @@ import {
   Plus,
   ExternalLink,
   RefreshCw,
-  Layers
+  Layers,
+  Camera
 } from 'lucide-react';
+import { PhotoVerificationSection } from '@/components/verification/PhotoVerificationSection';
 
-type TabKey = 'OVERVIEW' | 'FINANCIALS' | 'PAYMENTS' | 'PROGRESS' | 'DOCUMENTS' | 'AI_ANALYSIS' | 'AUDIT';
+type TabKey = 'OVERVIEW' | 'FINANCIALS' | 'PAYMENTS' | 'PROGRESS' | 'DOCUMENTS' | 'AI_ANALYSIS' | 'EVIDENCE_VERIFY' | 'AUDIT';
 
 export default function ProjectDetailsPage() {
   const params = useParams();
@@ -242,7 +244,8 @@ export default function ProjectDetailsPage() {
               { key: 'PROGRESS', label: '4. Physical Progress', icon: TrendingUp },
               { key: 'DOCUMENTS', label: '5. Documents & UCs', icon: FileText },
               { key: 'AI_ANALYSIS', label: '6. AI Risk Analysis', icon: Sparkles },
-              { key: 'AUDIT', label: '7. Audit History', icon: History },
+              { key: 'EVIDENCE_VERIFY', label: '7. Photo & MB Geofence', icon: Camera },
+              { key: 'AUDIT', label: '8. Audit History', icon: History },
             ].map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.key;
@@ -608,7 +611,12 @@ export default function ProjectDetailsPage() {
             </div>
           )}
 
-          {/* TAB 7: AUDIT HISTORY */}
+          {/* TAB 7: EVIDENCE VERIFICATION (FEATURE 6) */}
+          {activeTab === 'EVIDENCE_VERIFY' && (
+            <PhotoVerificationSection project={project} />
+          )}
+
+          {/* TAB 8: AUDIT HISTORY */}
           {activeTab === 'AUDIT' && (
             <Card
               title="Project Modification & Event Audit Trail"

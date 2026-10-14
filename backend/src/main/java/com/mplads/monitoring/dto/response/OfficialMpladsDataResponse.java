@@ -44,4 +44,11 @@ public class OfficialMpladsDataResponse {
     private String calamityAmountCr;
     
     private List<Map<String, Object>> officialStates;
+
+    // Cache Freshness & Telemetry Metrics (Phase 1 Feature 1)
+    private LocalDateTime lastSuccessfulRefresh;
+    @Builder.Default
+    private boolean sourceAvailable = true;
+    private Long cacheFreshnessSeconds;
+    private Long refreshLatencyMs;
 }

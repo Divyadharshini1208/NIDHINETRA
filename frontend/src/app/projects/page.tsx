@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { LoadingState, EmptyState, ErrorState } from '@/components/ui/StateViews';
 import { useAuth } from '@/context/AuthContext';
+import { useRequireAuth } from '@/utils/useRequireAuth';
 import { useToast } from '@/context/ToastContext';
 import { projectService } from '@/services/projectService';
 import { locationService } from '@/services/locationService';
@@ -37,7 +38,8 @@ import {
 import { CreateProjectModal } from '@/components/projects/CreateProjectModal';
 
 export default function ProjectsListingPage() {
-  const { user, isAuthenticated, isLoading: authLoading, demoLogin } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useRequireAuth();
+  const { demoLogin } = useAuth();
   const { error: toastError } = useToast();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -184,6 +186,14 @@ export default function ProjectsListingPage() {
     setEndDate('');
     fetchProjects(0);
   };
+
+  if (authLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <LoadingState message="Verifying official authorization credentials..." />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex bg-slate-100/70">

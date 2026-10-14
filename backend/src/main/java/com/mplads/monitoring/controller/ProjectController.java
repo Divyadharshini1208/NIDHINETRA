@@ -13,7 +13,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -29,7 +28,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/projects")
-@RequiredArgsConstructor
 @Tag(name = "Project Management", description = "REST APIs for MPLADS projects, life-cycle monitoring, and details")
 @SecurityRequirement(name = "BearerAuth")
 public class ProjectController {
@@ -37,6 +35,16 @@ public class ProjectController {
     private final ProjectService projectService;
     private final FinancialService financialService;
     private final ProgressService progressService;
+
+    public ProjectController(
+            ProjectService projectService,
+            FinancialService financialService,
+            ProgressService progressService) {
+        this.projectService = projectService;
+        this.financialService = financialService;
+        this.progressService = progressService;
+    }
+
 
     @GetMapping
     @Operation(summary = "Get paginated projects with role-based filtering and multi-parameter filters")

@@ -8,7 +8,6 @@ import com.mplads.monitoring.repository.*;
 import com.mplads.monitoring.security.UserPrincipal;
 import com.mplads.monitoring.service.AdminDataImportService;
 import com.mplads.monitoring.service.AuditLogService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -21,7 +20,6 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class AdminDataImportServiceImpl implements AdminDataImportService {
 
     private final ProjectRepository projectRepository;
@@ -29,6 +27,20 @@ public class AdminDataImportServiceImpl implements AdminDataImportService {
     private final DistrictRepository districtRepository;
     private final DataImportRecordRepository importRecordRepository;
     private final AuditLogRepository auditLogRepository;
+
+    public AdminDataImportServiceImpl(
+            ProjectRepository projectRepository,
+            StateRepository stateRepository,
+            DistrictRepository districtRepository,
+            DataImportRecordRepository importRecordRepository,
+            AuditLogRepository auditLogRepository) {
+        this.projectRepository = projectRepository;
+        this.stateRepository = stateRepository;
+        this.districtRepository = districtRepository;
+        this.importRecordRepository = importRecordRepository;
+        this.auditLogRepository = auditLogRepository;
+    }
+
 
     @Override
     @Transactional(readOnly = true)

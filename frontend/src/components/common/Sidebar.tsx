@@ -55,6 +55,8 @@ export function Sidebar() {
         { name: 'Projects Registry', href: '/projects', icon: FileText },
         { name: 'AI Risk Monitoring', href: '/ai-monitoring', icon: Sparkles },
         { name: 'Risk Alerts & Dossier', href: '/alerts', icon: AlertTriangle },
+        { name: 'Agency Reliability', href: '/agencies', icon: UserCheck },
+        { name: 'Fund Simulator', href: '/simulation', icon: Sliders },
         { name: 'Geographic GIS Map', href: '/map', icon: Globe },
         { name: 'Statutory Reports', href: '/reports', icon: BarChart3 },
         { name: 'Bulk Data Import', href: '/admin/data-import', icon: Landmark },
@@ -67,6 +69,8 @@ export function Sidebar() {
         { name: 'State Projects', href: '/projects', icon: FileText },
         { name: 'AI Monitoring', href: '/ai-monitoring', icon: Sparkles },
         { name: 'Risk Alerts', href: '/alerts', icon: AlertTriangle },
+        { name: 'Agency Reliability', href: '/agencies', icon: UserCheck },
+        { name: 'Fund Simulator', href: '/simulation', icon: Sliders },
         { name: 'District GIS Map', href: '/map', icon: Globe },
         { name: 'Statutory Reports', href: '/reports', icon: BarChart3 },
       ];
@@ -76,6 +80,8 @@ export function Sidebar() {
         { name: 'District Projects', href: '/projects', icon: FileText },
         { name: 'AI Risk Queue', href: '/ai-monitoring', icon: Sparkles },
         { name: 'Risk Alerts', href: '/alerts', icon: AlertTriangle },
+        { name: 'Agency Reliability', href: '/agencies', icon: UserCheck },
+        { name: 'Fund Simulator', href: '/simulation', icon: Sliders },
         { name: 'District GIS Map', href: '/map', icon: Globe },
         { name: 'Statutory Reports', href: '/reports', icon: BarChart3 },
       ];
@@ -84,6 +90,8 @@ export function Sidebar() {
         { name: 'Constituency Tracker', href: '/mp/dashboard', icon: LayoutDashboard },
         { name: 'Recommended Works', href: '/projects', icon: FileText },
         { name: 'Risk Indicators', href: '/alerts', icon: AlertTriangle },
+        { name: 'Agency Reliability', href: '/agencies', icon: UserCheck },
+        { name: 'Fund Simulator', href: '/simulation', icon: Sliders },
         { name: 'Constituency Map', href: '/map', icon: Globe },
         { name: 'Statutory Reports', href: '/reports', icon: BarChart3 },
       ];
@@ -93,6 +101,8 @@ export function Sidebar() {
         { name: 'Projects', href: '/projects', icon: FileText },
         { name: 'AI Monitoring', href: '/ai-monitoring', icon: Sparkles },
         { name: 'Risk Alerts', href: '/alerts', icon: AlertTriangle },
+        { name: 'Agency Reliability', href: '/agencies', icon: UserCheck },
+        { name: 'Fund Simulator', href: '/simulation', icon: Sliders },
         { name: 'GIS Map', href: '/map', icon: Globe },
         { name: 'Reports', href: '/reports', icon: BarChart3 },
       ];

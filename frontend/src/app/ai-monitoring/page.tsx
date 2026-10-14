@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import { useRequireAuth } from '@/utils/useRequireAuth';
 import { useToast } from '@/context/ToastContext';
 import { aiMonitoringService } from '@/services/aiMonitoringService';
 import { AiMonitoringSummary, Project, RiskAlert } from '@/types';
@@ -45,11 +46,15 @@ import {
   Search,
   Bot,
   Send,
-  Database
+  Database,
+  GitCompare,
+  CheckCircle,
+  XCircle,
+  X
 } from 'lucide-react';
 
 export default function AiMonitoringDashboardPage() {
-  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useRequireAuth();
   const { success, error: toastError, info } = useToast();
 
   const [summary, setSummary] = useState<AiMonitoringSummary | null>(null);
@@ -62,6 +67,26 @@ export default function AiMonitoringDashboardPage() {
   const [nlQuery, setNlQuery] = useState<string>('');
   const [nlResponse, setNlResponse] = useState<any | null>(null);
   const [isQuerying, setIsQuerying] = useState<boolean>(false);
+
+  // Dual-Model Comparison Benchmark
+  const [showComparisonModal, setShowComparisonModal] = useState<boolean>(false);
+  const [comparisonReport, setComparisonReport] = useState<any | null>(null);
+  const [isComparing, setIsComparing] = useState<boolean>(false);
+
+  const handleOpenComparison = async () => {
+    setShowComparisonModal(true);
+    if (!comparisonReport) {
+      setIsComparing(true);
+      try {
+        const report = await aiMonitoringService.compareModels();
+        setComparisonReport(report);
+      } catch (err: any) {
+        toastError('Benchmark Failed', err.message || 'Could not load comparative model evaluation');
+      } finally {
+        setIsComparing(false);
+      }
+    }
+  };
 
   const handleNlQuerySubmit = async (e?: React.FormEvent, customQuery?: string) => {
     if (e) e.preventDefault();
@@ -110,6 +135,14 @@ export default function AiMonitoringDashboardPage() {
   useEffect(() => {
     loadData();
   }, [isAuthenticated]);
+
+  if (authLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <LoadingState message="Verifying official authorization credentials..." />
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -181,6 +214,14 @@ export default function AiMonitoringDashboardPage() {
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                     {engineHealth?.mode || 'Active Inference Node'}
                   </span>
+                  <button
+                    onClick={handleOpenComparison}
+                    className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/30 flex items-center gap-1.5 transition cursor-pointer"
+                    title="Open Dual-Engine Benchmark & Comparative Model Audit"
+                  >
+                    <GitCompare className="w-3 h-3 text-gov-saffron" />
+                    Dual-Model Audit
+                  </button>
                 </div>
                 <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
                   National Anomaly Telemetry & Predictive Risk Oversight
@@ -368,13 +409,12 @@ export default function AiMonitoringDashboardPage() {
                       {selectedFlaggedProject.projectId}
                     </span>
                     <span
-                      className={`text-xs font-black px-2 py-0.5 rounded ${
-                        (selectedFlaggedProject.riskScore || 0) >= 80
+                      className={`text-xs font-black px-2 py-0.5 rounded ${(selectedFlaggedProject.riskScore || 0) >= 80
                           ? 'bg-red-100 text-red-800'
                           : (selectedFlaggedProject.riskScore || 0) >= 60
-                          ? 'bg-amber-100 text-amber-900'
-                          : 'bg-blue-100 text-blue-900'
-                      }`}
+                            ? 'bg-amber-100 text-amber-900'
+                            : 'bg-blue-100 text-blue-900'
+                        }`}
                     >
                       Risk Score: {selectedFlaggedProject.riskScore || 50}/100
                     </span>
@@ -604,19 +644,17 @@ export default function AiMonitoringDashboardPage() {
                     <tr
                       key={p.id}
                       onClick={() => setSelectedFlaggedProject(p)}
-                      className={`cursor-pointer transition-colors ${
-                        selectedFlaggedProject?.id === p.id ? 'bg-gov-navy-50/70' : 'hover:bg-slate-50'
-                      }`}
+                      className={`cursor-pointer transition-colors ${selectedFlaggedProject?.id === p.id ? 'bg-gov-navy-50/70' : 'hover:bg-slate-50'
+                        }`}
                     >
                       <td className="p-3.5">
                         <span
-                          className={`font-mono font-black px-2.5 py-1 rounded text-xs ${
-                            (p.riskScore || 0) >= 80
+                          className={`font-mono font-black px-2.5 py-1 rounded text-xs ${(p.riskScore || 0) >= 80
                               ? 'bg-red-100 text-red-800'
                               : (p.riskScore || 0) >= 60
-                              ? 'bg-amber-100 text-amber-900'
-                              : 'bg-blue-100 text-blue-900'
-                          }`}
+                                ? 'bg-amber-100 text-amber-900'
+                                : 'bg-blue-100 text-blue-900'
+                            }`}
                         >
                           {p.riskScore || 50}
                         </span>
@@ -647,6 +685,225 @@ export default function AiMonitoringDashboardPage() {
               </table>
             </div>
           </div>
+
+          {/* Dual-Model Comparison Benchmark Modal */}
+          {showComparisonModal && (
+            <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+              <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 p-6 space-y-5">
+                {/* Modal Header */}
+                <div className="flex items-center justify-between pb-4 border-b border-slate-200">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 bg-gov-navy-50 text-gov-navy-900 rounded-xl border border-slate-200">
+                      <GitCompare className="w-5 h-5 text-gov-saffron" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-gov-navy-900">
+                        Dual-Engine Model Benchmark & Comparative Audit
+                      </h3>
+                      <p className="text-xs text-slate-500">
+                        Rigorous side-by-side evaluation of Scikit-Learn IsolationForest baseline vs. PyTorch Tabular Autoencoder.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowComparisonModal(false)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Modal Body */}
+                {isComparing ? (
+                  <div className="py-12 flex flex-col items-center justify-center space-y-3">
+                    <RefreshCw className="w-8 h-8 text-gov-navy-800 animate-spin" />
+                    <p className="text-xs font-bold text-slate-600">
+                      Executing dual-engine inference and computing statistical concordance...
+                    </p>
+                  </div>
+                ) : comparisonReport ? (
+                  <div className="space-y-5 text-xs">
+                    {/* Top Concordance Banner */}
+                    <div className="p-4 rounded-xl bg-gradient-to-r from-gov-navy-900 via-gov-navy-800 to-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-gov-saffron">
+                          EMPIRICAL BENCHMARK CONCORDANCE
+                        </span>
+                        <h4 className="text-xl font-black mt-0.5 font-mono">
+                          {comparisonReport.agreementRatePercent}% Agreement Rate
+                        </h4>
+                        <p className="text-xs text-slate-300 mt-1">
+                          Consensus reached on {comparisonReport.agreementCount} of {comparisonReport.totalBenchmarkCases} controlled validation benchmark projects.
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="text-[10px] uppercase font-bold text-slate-400">Evaluated Timestamp</span>
+                        <p className="text-xs font-mono text-slate-200">{new Date(comparisonReport.evaluatedAt).toLocaleTimeString()}</p>
+                      </div>
+                    </div>
+
+                    {/* Side-by-Side Model Comparison Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Scikit-Learn Card */}
+                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h5 className="font-bold text-slate-900 flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                            {comparisonReport.scikitLearnMetrics.modelName}
+                          </h5>
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                            {comparisonReport.scikitLearnMetrics.status}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+                          <div className="bg-white p-2 rounded border border-slate-200">
+                            <span className="text-slate-500 block">Accuracy:</span>
+                            <span className="font-bold text-slate-900 font-mono">
+                              {(comparisonReport.scikitLearnMetrics.accuracy * 100).toFixed(1)}%
+                            </span>
+                          </div>
+                          <div className="bg-white p-2 rounded border border-slate-200">
+                            <span className="text-slate-500 block">Sensitivity (Recall):</span>
+                            <span className="font-bold text-slate-900 font-mono">
+                              {(comparisonReport.scikitLearnMetrics.sensitivity * 100).toFixed(1)}%
+                            </span>
+                          </div>
+                          <div className="bg-white p-2 rounded border border-slate-200">
+                            <span className="text-slate-500 block">Specificity:</span>
+                            <span className="font-bold text-slate-900 font-mono">
+                              {(comparisonReport.scikitLearnMetrics.specificity * 100).toFixed(1)}%
+                            </span>
+                          </div>
+                          <div className="bg-white p-2 rounded border border-slate-200">
+                            <span className="text-slate-500 block">False Positive Rate:</span>
+                            <span className="font-bold text-slate-900 font-mono">
+                              {(comparisonReport.scikitLearnMetrics.falsePositiveRate * 100).toFixed(1)}%
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* PyTorch Tabular Autoencoder Card */}
+                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h5 className="font-bold text-slate-900 flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                            {comparisonReport.pytorchAutoencoderMetrics.modelName}
+                          </h5>
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800">
+                            {comparisonReport.pytorchAutoencoderMetrics.status}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+                          <div className="bg-white p-2 rounded border border-slate-200">
+                            <span className="text-slate-500 block">Accuracy:</span>
+                            <span className="font-bold text-slate-900 font-mono">
+                              {(comparisonReport.pytorchAutoencoderMetrics.accuracy * 100).toFixed(1)}%
+                            </span>
+                          </div>
+                          <div className="bg-white p-2 rounded border border-slate-200">
+                            <span className="text-slate-500 block">Sensitivity (Recall):</span>
+                            <span className="font-bold text-slate-900 font-mono">
+                              {(comparisonReport.pytorchAutoencoderMetrics.sensitivity * 100).toFixed(1)}%
+                            </span>
+                          </div>
+                          <div className="bg-white p-2 rounded border border-slate-200">
+                            <span className="text-slate-500 block">Reconstruction Threshold:</span>
+                            <span className="font-bold text-indigo-900 font-mono">
+                              MSE &gt; {comparisonReport.pytorchAutoencoderMetrics.thresholdMse}
+                            </span>
+                          </div>
+                          <div className="bg-white p-2 rounded border border-slate-200">
+                            <span className="text-slate-500 block">Network Latent Bottleneck:</span>
+                            <span className="font-bold text-slate-900 font-mono">
+                              4 Dimensions
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Benchmark Case Evaluation Table */}
+                    <div className="border border-slate-200 rounded-xl overflow-hidden">
+                      <div className="p-3 bg-slate-50 border-b border-slate-200 font-bold text-slate-800">
+                        Side-by-Side Validation Cases (N={comparisonReport.comparativeAnalysis?.length || 0})
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs border-collapse">
+                          <thead>
+                            <tr className="bg-slate-100/75 border-b border-slate-200 text-slate-700 font-bold uppercase text-[10px]">
+                              <th className="p-2.5">Case ID</th>
+                              <th className="p-2.5">Project Name</th>
+                              <th className="p-2.5">Ground Truth</th>
+                              <th className="p-2.5">Isolation Forest</th>
+                              <th className="p-2.5">PyTorch MSE</th>
+                              <th className="p-2.5 text-center">Concordance</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-200 font-medium">
+                            {comparisonReport.comparativeAnalysis?.map((c: any) => (
+                              <tr key={c.caseId} className="hover:bg-slate-50">
+                                <td className="p-2.5 font-mono font-bold text-slate-700">{c.caseId}</td>
+                                <td className="p-2.5 font-semibold text-slate-900">{c.projectName}</td>
+                                <td className="p-2.5">
+                                  <span
+                                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                      c.groundTruthAnomalous ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800'
+                                    }`}
+                                  >
+                                    {c.groundTruthAnomalous ? 'ANOMALOUS' : 'NORMAL'}
+                                  </span>
+                                </td>
+                                <td className="p-2.5 font-mono">
+                                  Score: {c.scikitLearn.riskScore} ({c.scikitLearn.riskLevel})
+                                </td>
+                                <td className="p-2.5 font-mono text-indigo-900">
+                                  MSE: {c.pytorchAutoencoder.reconstructionMse}
+                                </td>
+                                <td className="p-2.5 text-center">
+                                  {c.modelsAgreed ? (
+                                    <span className="inline-flex items-center text-emerald-700 font-bold text-[11px] gap-1">
+                                      <CheckCircle className="w-3.5 h-3.5" /> Agreed
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center text-amber-700 font-bold text-[11px] gap-1">
+                                      <XCircle className="w-3.5 h-3.5" /> Divergent
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Documented Limitations */}
+                    {comparisonReport.documentedLimitations && (
+                      <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-950 space-y-1 text-[11px]">
+                        <p className="font-bold text-amber-900 uppercase">Documented Statistical Limitations & Statutory Role:</p>
+                        <ul className="list-disc pl-4 space-y-0.5 text-amber-900">
+                          {comparisonReport.documentedLimitations.map((lim: string, idx: number) => (
+                            <li key={idx}>{lim}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+
+                {/* Modal Footer */}
+                <div className="pt-3 border-t border-slate-200 flex justify-end">
+                  <button
+                    onClick={() => setShowComparisonModal(false)}
+                    className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-xs font-bold transition"
+                  >
+                    Close Benchmark Report
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </main>
       </div>
     </div>

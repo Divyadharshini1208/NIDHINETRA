@@ -6,7 +6,6 @@ import com.mplads.monitoring.entity.ProjectStatus;
 import com.mplads.monitoring.repository.ProjectRepository;
 import com.mplads.monitoring.security.UserPrincipal;
 import com.mplads.monitoring.service.ReportService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,10 +16,14 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class ReportServiceImpl implements ReportService {
 
     private final ProjectRepository projectRepository;
+
+    public ReportServiceImpl(ProjectRepository projectRepository) {
+        this.projectRepository = projectRepository;
+    }
+
 
     @Override
     @Transactional(readOnly = true)

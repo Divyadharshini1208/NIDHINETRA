@@ -18,6 +18,8 @@ public class AiAnalysisPreviewResponse {
     private List<AnomalyIndicator> anomalyIndicators;
     private PredictiveTimeline predictiveTimeline;
     private List<String> aiRecommendations;
+    private PyTorchEvaluation pytorchEvaluation;
+    private FundUtilization fundUtilization;
 
     @Getter
     @Setter
@@ -42,5 +44,44 @@ public class AiAnalysisPreviewResponse {
         private String aiEstimatedCompletion;
         private Integer estimatedDelayDays;
         private Double costOverrunRiskPercent;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class PyTorchEvaluation {
+        private String modelName;
+        private String modelVersion;
+        private String modelStatus;
+        private String device;
+        private Double reconstructionMse;
+        private Double thresholdMse;
+        private Boolean isAnomalous;
+        private Double reconstructionConfidence;
+        private String indicator;
+        private String explanation;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class FundUtilization {
+        private Double sanctionedAmountLakhs;
+        private Double releasedAmountLakhs;
+        private Double expenditureAmountLakhs;
+        private Double unspentBalanceLakhs;
+        private Double fundUtilizationPct;
+        private Double drawdownRatioPct;
+        private Double physicalProgressPct;
+        private Double financialProgressPct;
+        private Double progressDivergenceGap;
+        private Double expenditurePerProgressPoint;
+        private String dataCompletenessStatus;
+        private List<String> dataQualityWarnings;
+        private Boolean isValidForMlInference;
     }
 }

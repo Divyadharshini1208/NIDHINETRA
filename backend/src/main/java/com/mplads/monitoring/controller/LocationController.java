@@ -5,7 +5,6 @@ import com.mplads.monitoring.dto.response.LocationDto;
 import com.mplads.monitoring.service.LocationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,11 +12,14 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/locations")
-@RequiredArgsConstructor
 @Tag(name = "Administrative Geography", description = "Endpoints for fetching Indian States, Districts, and Constituencies")
 public class LocationController {
 
     private final LocationService locationService;
+
+    public LocationController(LocationService locationService) {
+        this.locationService = locationService;
+    }
 
     @GetMapping("/states")
     @Operation(summary = "Get all States and Union Territories")

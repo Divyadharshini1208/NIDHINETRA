@@ -14,7 +14,6 @@ import java.util.List;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class DataInitializer implements CommandLineRunner {
 
     private final RoleRepository roleRepository;
@@ -36,6 +35,47 @@ public class DataInitializer implements CommandLineRunner {
     private final InvestigationNoteRepository investigationNoteRepository;
     private final AuditLogRepository auditLogRepository;
     private final PasswordEncoder passwordEncoder;
+
+    public DataInitializer(
+            RoleRepository roleRepository,
+            UserRepository userRepository,
+            StateRepository stateRepository,
+            DistrictRepository districtRepository,
+            ConstituencyRepository constituencyRepository,
+            ProjectCategoryRepository categoryRepository,
+            ProjectRepository projectRepository,
+            ProjectSummaryRepository projectSummaryRepository,
+            SanctionRepository sanctionRepository,
+            FundReleaseRepository fundReleaseRepository,
+            ExpenditureRepository expenditureRepository,
+            PaymentRepository paymentRepository,
+            ProjectProgressRepository progressRepository,
+            DocumentRepository documentRepository,
+            RiskAlertRepository riskAlertRepository,
+            InvestigationRepository investigationRepository,
+            InvestigationNoteRepository investigationNoteRepository,
+            AuditLogRepository auditLogRepository,
+            PasswordEncoder passwordEncoder) {
+        this.roleRepository = roleRepository;
+        this.userRepository = userRepository;
+        this.stateRepository = stateRepository;
+        this.districtRepository = districtRepository;
+        this.constituencyRepository = constituencyRepository;
+        this.categoryRepository = categoryRepository;
+        this.projectRepository = projectRepository;
+        this.projectSummaryRepository = projectSummaryRepository;
+        this.sanctionRepository = sanctionRepository;
+        this.fundReleaseRepository = fundReleaseRepository;
+        this.expenditureRepository = expenditureRepository;
+        this.paymentRepository = paymentRepository;
+        this.progressRepository = progressRepository;
+        this.documentRepository = documentRepository;
+        this.riskAlertRepository = riskAlertRepository;
+        this.investigationRepository = investigationRepository;
+        this.investigationNoteRepository = investigationNoteRepository;
+        this.auditLogRepository = auditLogRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
 
     @Override
     @Transactional

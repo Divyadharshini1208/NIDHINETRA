@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import { useRequireAuth } from '@/utils/useRequireAuth';
 import { useToast } from '@/context/ToastContext';
 import { alertService } from '@/services/alertService';
 import { RiskAlert, PagedResponse } from '@/types';
@@ -32,7 +33,7 @@ import {
 } from 'lucide-react';
 
 export default function RiskAlertsPage() {
-  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useRequireAuth();
   const { success, error: toastError, info } = useToast();
 
   const [alerts, setAlerts] = useState<RiskAlert[]>([]);
@@ -169,6 +170,14 @@ export default function RiskAlertsPage() {
         );
     }
   };
+
+  if (authLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <LoadingState message="Verifying official authorization credentials..." />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-slate-100 font-sans">

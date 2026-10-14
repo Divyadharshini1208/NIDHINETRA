@@ -106,3 +106,131 @@ Returns system-wide audit event logs with pagination.
 ### `GET /api/health`
 *Requires Bearer Token*
 Validates system operational status and authenticated user identity.
+
+---
+
+## 🏛 6. MoSPI Official Telemetry & Background Cache (Feature 1)
+
+### `GET /api/official-mplads/summary`
+Returns cached official MoSPI aggregate metrics in < 100ms with data freshness timestamps and source availability indicators.
+
+### `GET /api/official-mplads/states`
+Returns cached state-wise sanctioned and completed works from official MoSPI portal.
+
+### `POST /api/official-mplads/refresh`
+*Requires `ROLE_MINISTRY_ADMIN`*
+Triggers an immediate asynchronous background sync of official MoSPI telemetry.
+
+---
+
+## 📋 7. AI Collector Inspection Queue (Feature 5)
+
+### `GET /api/collector/inspections/queue`
+*Requires `ROLE_DISTRICT_AUTHORITY`, `ROLE_STATE_NODAL_AUTHORITY`, or `ROLE_MINISTRY_ADMIN`*
+Returns AI-prioritized project queue for inspection, ranked by composite risk score, fund utilization mismatch, and delay days.
+**Query Parameters**: `districtId`, `status`, `page`, `size`.
+
+### `GET /api/collector/inspections/weekly-summary`
+Returns weekly inspection compliance KPIs, completed inspections, turnaround days, and outcome distribution.
+**Query Parameters**: `districtId`.
+
+### `POST /api/collector/inspections/assign`
+*Requires `ROLE_DISTRICT_AUTHORITY` or `ROLE_MINISTRY_ADMIN`*
+Issues formal field inspection directive to designated technical officer.
+**Request Body**:
+```json
+{
+  "projectId": 42,
+  "assignedOfficerName": "Shri V. S. Patil, Executive Engineer",
+  "assignedOfficerDesignation": "Executive Engineer (PWD)",
+  "deadline": "2026-11-15",
+  "remarks": "Verify foundation depth and milestone physical completion against MB page 84"
+}
+```
+
+### `POST /api/collector/inspections/outcome`
+*Requires `ROLE_DISTRICT_AUTHORITY` or `ROLE_MINISTRY_ADMIN`*
+Records certified measurement book verification outcome and compliance status.
+**Request Body**:
+```json
+{
+  "assignmentId": 12,
+  "findingsOutcome": "SATISFACTORY",
+  "findingsSummary": "Ground physical progress aligns with 60% disbursement voucher. Quality verified.",
+  "recommendedAction": "Approve milestone installment disbursal"
+}
+```
+
+---
+
+## 📸 8. Geofenced Photo & Measurement Book Verification (Feature 6)
+
+### `POST /api/projects/{id}/verify-photo`
+*Requires `ROLE_DISTRICT_AUTHORITY`, `ROLE_STATE_NODAL_AUTHORITY`, or `ROLE_MINISTRY_ADMIN`*
+*Consumes: `multipart/form-data`*
+Extracts image EXIF coordinates, evaluates Haversine distance against sanctioned project footprint (500m geofence), checks SHA-256 for duplicate image reuse, and records audit trail.
+**Form Parts**:
+- `file`: Multipart photo file (JPEG, PNG, WebP &bull; max 10MB)
+- `latitude`: Claimed latitude (optional)
+- `longitude`: Claimed longitude (optional)
+
+### `GET /api/projects/{id}/photo-verifications`
+*Requires Authentication*
+Lists all historical geofence verification audit outcomes for a project.
+
+---
+
+## 🏢 9. Implementing Agency Reliability Index (Feature 7)
+
+### `GET /api/analytics/agencies`
+*Requires Authentication*
+Returns implementing agencies and contractors ranked by composite reliability score (0-100) and assigned performance bands (`A+`, `A`, `B`, `C`).
+
+### `GET /api/analytics/agencies/{agencyName}`
+*Requires Authentication*
+Returns deep-dive indicator contributions (on-time rate, average delay days, budget variance, audit findings) for the designated agency.
+
+---
+
+## 🔔 10. Real-Time Risk Notifications via SSE (Feature 8)
+
+### `GET /api/notifications/stream?token={jwt}`
+*Requires Authentication (supports query parameter token for native EventSource)*
+Opens persistent Server-Sent Events (SSE) stream for real-time anomaly alerts filtered strictly by caller's jurisdiction.
+
+### `GET /api/notifications`
+*Requires Authentication*
+Lists unread/historical risk notifications for caller's jurisdiction.
+
+### `PATCH /api/notifications/{id}/read`
+*Requires Authentication*
+Marks designated notification as read.
+
+---
+
+## 🎛 11. What-If Fund Allocation Simulator (Feature 9)
+
+### `POST /api/simulations/evaluate`
+*Requires Authentication*
+Evaluates hypothetical budget reallocations across projects, validating mathematical constraints (no negative budgets, cannot drop below incurred expenditure), and projecting beneficiary and timeline delivery shifts.
+**Request Body**:
+```json
+{
+  "title": "Drinking Water Priority Shift",
+  "scopeType": "DISTRICT",
+  "scopeId": 1,
+  "adjustments": [
+    { "projectId": 1, "adjustmentDeltaLakhs": 25.0 },
+    { "projectId": 2, "adjustmentDeltaLakhs": -25.0 }
+  ]
+}
+```
+
+### `POST /api/simulations/save`
+*Requires Authentication*
+Persists evaluated scenario for administrative discussion and statutory reporting.
+
+### `GET /api/simulations`
+*Requires Authentication*
+Lists previously saved what-if policy scenarios accessible to the user.
+
