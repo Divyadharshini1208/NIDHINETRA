@@ -58,7 +58,19 @@ FEATURE_SPECS = [
     {"key": "payment_concentration_index", "name": "Payment Drawdown Concentration Index"}
 ]
 
-MODEL_DIR = Path(__file__).resolve().parent.parent / "models"
+def _resolve_model_dir() -> Path:
+    candidates = [
+        Path(__file__).resolve().parent.parent / "models",
+        Path.cwd() / "models",
+        Path.cwd() / "ai-service" / "models",
+        Path(__file__).resolve().parent / "models",
+    ]
+    for c in candidates:
+        if c.exists() and (c / "isolation_forest.joblib").exists():
+            return c
+    return candidates[0]
+
+MODEL_DIR = _resolve_model_dir()
 MODEL_PATH = MODEL_DIR / "isolation_forest.joblib"
 SCALER_PATH = MODEL_DIR / "robust_scaler.joblib"
 METADATA_PATH = MODEL_DIR / "model_metadata.json"
@@ -89,7 +101,10 @@ class GenuineAnomalyDetectionPipeline:
         self._cached_candidate_matrix: Optional[Any] = None
         self._cached_candidate_ids: Optional[List[str]] = None
 
-        MODEL_DIR.mkdir(parents=True, exist_ok=True)
+        try:
+            MODEL_DIR.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            pass
         self._load_or_train_pipeline()
 
     def _generate_representative_baseline_data(self, n_samples: int = 800) -> np.ndarray:
@@ -184,23 +199,14 @@ class GenuineAnomalyDetectionPipeline:
             }
 
         # Persist model artifacts
-        joblib.dump(self.iso_forest, MODEL_PATH)
-        joblib.dump(self.scaler, SCALER_PATH)
-
-        self.metadata = {
-            "model_type": "IsolationForest",
-            "model_version": "2.1.0-Production",
-            "fit_timestamp": datetime.datetime.now().isoformat(),
-            "n_samples": n_samples,
-            "n_estimators": 150,
-            "contamination_parameter": 0.12,
-            "random_seed": 42,
-            "features": [s["key"] for s in FEATURE_SPECS],
-            "baseline_stats": self.baseline_stats
-        }
-
-        with open(METADATA_PATH, "w", encoding="utf-8") as f:
-            json.dump(self.metadata, f, indent=2)
+        try:
+            joblib.dump(self.iso_forest, MODEL_PATH)
+            joblib.dump(self.scaler, SCALER_PATH)
+            with open(METADATA_PATH, "w", encoding="utf-8") as f:
+                json.dump(self.metadata, f, indent=2)
+        except OSError:
+            # Serverless environments (e.g. Vercel/AWS Lambda) have read-only filesystems
+            pass
 
         return self.metadata
 

@@ -52,6 +52,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/")
+def root():
+    return {
+        "service": "MPLADS AI Monitoring & Risk Telemetry Service",
+        "status": "UP",
+        "version": "2.1.0",
+        "docs": "/docs",
+        "health": "/health"
+    }
+
 @app.get("/health")
 def health_check():
     return {

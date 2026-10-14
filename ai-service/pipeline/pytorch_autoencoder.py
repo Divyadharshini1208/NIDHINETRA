@@ -22,7 +22,19 @@ from pipeline.data_processor import FEATURE_COLUMNS, DataProcessor
 
 logger = logging.getLogger("mplads-pytorch-autoencoder")
 
-MODEL_DIR = Path(__file__).resolve().parent.parent / "models"
+def _resolve_model_dir() -> Path:
+    candidates = [
+        Path(__file__).resolve().parent.parent / "models",
+        Path.cwd() / "models",
+        Path.cwd() / "ai-service" / "models",
+        Path(__file__).resolve().parent / "models",
+    ]
+    for c in candidates:
+        if c.exists() and (c / "pytorch_autoencoder.pt").exists():
+            return c
+    return candidates[0]
+
+MODEL_DIR = _resolve_model_dir()
 PYTORCH_WEIGHTS_PATH = MODEL_DIR / "pytorch_autoencoder.pt"
 PYTORCH_SCALER_PATH = MODEL_DIR / "pytorch_scaler.joblib"
 PYTORCH_METADATA_PATH = MODEL_DIR / "pytorch_metadata.json"
@@ -81,7 +93,16 @@ class PyTorchAnomalyEngine:
         self.metadata: Dict[str, Any] = {}
         self.status: str = "EXPERIMENTAL"
 
-        MODEL_DIR.mkdir(parents=True, exist_ok=True)
+        # Restrict PyTorch thread count in serverless execution environments
+        try:
+            torch.set_num_threads(1)
+        except Exception:
+            pass
+
+        try:
+            MODEL_DIR.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            pass
         self._load_or_train_model()
 
     def _load_or_train_model(self):
@@ -89,7 +110,10 @@ class PyTorchAnomalyEngine:
         if PYTORCH_WEIGHTS_PATH.exists() and PYTORCH_SCALER_PATH.exists() and PYTORCH_METADATA_PATH.exists():
             try:
                 self.model = TabularAutoencoder(input_dim=len(FEATURE_COLUMNS), latent_dim=4)
-                state_dict = torch.load(PYTORCH_WEIGHTS_PATH, map_location=self.device)
+                try:
+                    state_dict = torch.load(PYTORCH_WEIGHTS_PATH, map_location=self.device, weights_only=True)
+                except TypeError:
+                    state_dict = torch.load(PYTORCH_WEIGHTS_PATH, map_location=self.device)
                 self.model.load_state_dict(state_dict)
                 self.model.to(self.device)
                 self.model.eval()
@@ -204,11 +228,15 @@ class PyTorchAnomalyEngine:
             "statutory_role": "Experimental deep-learning anomaly benchmark evaluated against IsolationForest baseline."
         }
 
-        # Persist weights and scaler securely
-        torch.save(self.model.state_dict(), PYTORCH_WEIGHTS_PATH)
-        joblib.dump(self.scaler, PYTORCH_SCALER_PATH)
-        with open(PYTORCH_METADATA_PATH, "w") as f:
-            json.dump(self.metadata, f, indent=2)
+        # Persist weights and scaler securely if filesystem is writable
+        try:
+            torch.save(self.model.state_dict(), PYTORCH_WEIGHTS_PATH)
+            joblib.dump(self.scaler, PYTORCH_SCALER_PATH)
+            with open(PYTORCH_METADATA_PATH, "w") as f:
+                json.dump(self.metadata, f, indent=2)
+        except OSError:
+            # Serverless environments (e.g. Vercel/AWS Lambda) have read-only filesystems
+            pass
 
         logger.info(f"PyTorch Autoencoder trained & persisted. Derived MSE Threshold: {derived_threshold:.4f}")
         return self.metadata
