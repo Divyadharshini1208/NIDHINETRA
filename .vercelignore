@@ -3,7 +3,7 @@
 # Prevents Vercel from bundling backend, AI service, datasets, or caches
 # ==============================================================================
 
-# Microservices to exclude from Vercel (Deployed separately on Render / Railway / Docker)
+# Microservices to exclude from Vercel (Deployed separately on Render / Railway / Cloud Server)
 ai-service/
 backend/
 database/
@@ -25,18 +25,13 @@ venv/
 .env.local
 .env.*.local
 
-# Docker and local scripts
-docker-compose.yml
-docker-start.bat
-docker-start.sh
+# Local scripts and run files
 run-all.bat
+run-all.sh
 start.ps1
-Dockerfile
-.dockerignore
 
 # Test output and audit markdown files
 e2e_results.json
 temp_home.html
 PERFORMANCE_AUDIT.md
 IMPLEMENTATION_SUMMARY.md
-DOCKER.md

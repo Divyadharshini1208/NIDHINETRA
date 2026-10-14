@@ -14,7 +14,7 @@ echo [2/3] Launching Spring Boot Backend (Port 8080)...
 start "NIDHINETRA — Backend (:8080)" cmd /k "cd /d %ROOT_DIR%backend && mvn spring-boot:run"
 
 echo [3/3] Launching Next.js Frontend (Port 3000)...
-start "NIDHINETRA — Frontend (:3000)" cmd /k "cd /d %ROOT_DIR%frontend && npm start"
+start "NIDHINETRA — Frontend (:3000)" cmd /k "cd /d %ROOT_DIR%frontend && npm run dev"
 
 echo.
 echo ==============================================================================
