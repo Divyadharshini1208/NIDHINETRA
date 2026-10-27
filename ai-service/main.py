@@ -34,6 +34,7 @@ from pipeline.data_processor import FEATURE_COLUMNS
 from pipeline.pytorch_autoencoder import pytorch_engine
 from pipeline.model_evaluator import run_pipeline_evaluation, run_dual_model_comparison
 from pipeline.nl_analytics import nl_engine
+from api.auth import router as auth_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("mplads-ai-service")
@@ -51,6 +52,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(auth_router)
 
 @app.get("/")
 def root():

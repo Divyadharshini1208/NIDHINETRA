@@ -1,4 +1,4 @@
-import { fetchApi } from './api';
+import { fetchApi, getApiBaseUrl } from './api';
 import { ApiResponse, Project } from '@/types';
 
 export interface MapFilterParams {
@@ -8,8 +8,6 @@ export interface MapFilterParams {
   riskLevel?: string;
   category?: string;
 }
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 export const mapService = {
   getProjects: async (params: MapFilterParams = {}): Promise<Project[]> => {
@@ -34,7 +32,7 @@ export const mapService = {
 
       if (isAuthError) {
         try {
-          const authRes = await fetch(`${API_BASE}/api/auth/login`, {
+          const authRes = await fetch(`${getApiBaseUrl()}/api/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

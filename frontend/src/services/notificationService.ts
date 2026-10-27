@@ -1,7 +1,5 @@
-import { fetchApi } from './api';
+import { fetchApi, getApiBaseUrl } from './api';
 import { ApiResponse, PagedResponse, RiskNotificationItem } from '@/types';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 export const notificationService = {
   /**
@@ -59,7 +57,7 @@ export const notificationService = {
     const token = localStorage.getItem('mplads_token');
     if (!token) return () => {};
 
-    const url = `${API_BASE}/api/notifications/stream?token=${encodeURIComponent(token)}`;
+    const url = `${getApiBaseUrl()}/api/notifications/stream?token=${encodeURIComponent(token)}`;
     const eventSource = new EventSource(url);
 
     eventSource.addEventListener('CONNECTED', (event) => {
